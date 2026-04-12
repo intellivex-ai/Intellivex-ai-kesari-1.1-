@@ -1,6 +1,5 @@
 import { SignIn, SignUp } from '@clerk/clerk-react'
 import { useState } from 'react'
-import { Sparkles } from 'lucide-react'
 import { IntellivexLogo } from './Logo'
 
 export default function LoginPage() {
