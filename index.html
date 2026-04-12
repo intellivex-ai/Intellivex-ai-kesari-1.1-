@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      // Inject theme-color dynamically to resolve linter compatibility warnings 
+      // while preserving PWA status bar styling.
+      (function() {
+        const themeMeta = document.createElement('meta');
+        themeMeta.name = "theme-color";
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        themeMeta.content = isDark ? "#0d0d0f" : "#ffffff";
+        document.head.appendChild(themeMeta);
+      })();
+    </script>
+    <meta name="description" content="Kesari 1.1 — Your intelligent AI assistant powered by Intellivex AI. Fast, smart, and conversational." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Intellivex AI" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Intellivex AI — Kesari 1.1</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+      // Register service worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
