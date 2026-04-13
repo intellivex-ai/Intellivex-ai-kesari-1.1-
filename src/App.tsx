@@ -513,7 +513,7 @@ function SettingsModal({ open, onClose, darkMode, onToggleDark, onClearChats, se
                   {/* Appearance */}
                   <div className="setting-row">
                     <div>
-                      <p className="setting-label">Appearance</p>
+                      <h2 className="setting-label">Appearance</h2>
                       <p className="setting-sublabel">{darkMode ? "Dark mode" : "Light mode"}</p>
                     </div>
                     <button onClick={onToggleDark} className="toggle-btn">
@@ -522,10 +522,10 @@ function SettingsModal({ open, onClose, darkMode, onToggleDark, onClearChats, se
                     </button>
                   </div>
                   {/* Model */}
-                  <div className="setting-row setting-row-col">
+                  <div className="setting-row setting-row-col" aria-label="AI Model selection">
                     <div className="kesari-badge-row">
                       <div className="kesari-dot" />
-                      <span className="kesari-name">AI Model</span>
+                      <h3 className="kesari-name">AI Model</h3>
                       <span className="kesari-status">Active</span>
                     </div>
                     <div className="model-select-wrap">
@@ -547,8 +547,8 @@ function SettingsModal({ open, onClose, darkMode, onToggleDark, onClearChats, se
               )}
               {tab === "persona" && (
                 <div className="persona-editor-wrap">
-                  <p className="setting-label">Custom System Prompt</p>
-                  <p className="setting-sublabel">Override Kesari's default instructions. Leave blank to use the built-in personality.</p>
+                  <h2 className="setting-label">Custom System Prompt</h2>
+                  <p className="setting-sublabel">Override Kesari’s default instructions. Leave blank to use the built-in personality.</p>
                   <textarea
                     className="system-prompt-editor"
                     value={systemPrompt}
@@ -566,8 +566,8 @@ function SettingsModal({ open, onClose, darkMode, onToggleDark, onClearChats, se
               {tab === "about" && (
                 <div className="about-tab">
                   <div className="about-logo"><IntellivexLogo size={120} /></div>
-                  <p className="about-name">Intellivex AI</p>
-                  <p className="about-version">Kesari 1.1 · Build 2026.04</p>
+                  <h2 className="about-name">Intellivex AI</h2>
+                  <h3 className="about-version">Kesari 1.1 · Build 2026.04</h3>
                   <div className="about-features">
                     {["Multi-turn memory", "Code execution sandbox", "Voice input", "File attachments", "PWA installable", "Export conversations", "6 AI models", "Rate limiting"].map(f => (
                       <span key={f} className="about-feat"><Check size={11} />{f}</span>

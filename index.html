@@ -2,31 +2,94 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- ── Viewport (mobile-friendly) ── -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- ── PWA Theme Color (dynamic dark/light) ── -->
     <script>
-      // Inject theme-color dynamically to resolve linter compatibility warnings 
-      // while preserving PWA status bar styling.
       (function() {
-        const themeMeta = document.createElement('meta');
-        themeMeta.name = "theme-color";
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        themeMeta.content = isDark ? "#0d0d0f" : "#ffffff";
-        document.head.appendChild(themeMeta);
+        const m = document.createElement('meta');
+        m.name = 'theme-color';
+        m.content = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#0d0d0f' : '#ffffff';
+        document.head.appendChild(m);
       })();
     </script>
-    <meta name="description" content="Kesari 1.1 — Your intelligent AI assistant powered by Intellivex AI. Fast, smart, and conversational." />
+
+    <!-- ── Primary SEO ── -->
+    <title>Intellivex AI — Kesari 1.1 | Your Intelligent AI Assistant</title>
+    <meta name="description" content="Chat with Kesari 1.1 — a powerful AI assistant by Intellivex AI. Write code, debug errors, analyze data, plan projects, and more. Fast, smart, conversational." />
+    <meta name="keywords" content="Intellivex AI, Kesari AI, AI chat assistant, AI chatbot, code assistant, AI writing tool" />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="Intellivex AI" />
+    <link rel="canonical" href="https://intellivexai.com/" />
+
+    <!-- ── Open Graph (Social sharing — Facebook, WhatsApp, LinkedIn) ── -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://intellivexai.com/" />
+    <meta property="og:title" content="Intellivex AI — Kesari 1.1 | Your Intelligent AI Assistant" />
+    <meta property="og:description" content="Chat with Kesari 1.1 — write code, debug errors, analyze data, and plan projects. Powered by Intellivex AI." />
+    <meta property="og:image" content="https://intellivexai.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Intellivex AI" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- ── Twitter Card ── -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@intellivexai" />
+    <meta name="twitter:title" content="Intellivex AI — Kesari 1.1" />
+    <meta name="twitter:description" content="Chat with Kesari 1.1 — your powerful AI assistant by Intellivex AI." />
+    <meta name="twitter:image" content="https://intellivexai.com/og-image.png" />
+
+    <!-- ── PWA / Apple ── -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Intellivex AI" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
+
+    <!-- ── Favicon ── -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Intellivex AI — Kesari 1.1</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- ── Fonts (preconnect for speed) ── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <!-- ── JSON-LD Schema: SoftwareApplication ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Intellivex AI",
+      "alternateName": "Kesari 1.1",
+      "applicationCategory": "AIApplication",
+      "operatingSystem": "Web",
+      "description": "Kesari 1.1 is a powerful AI chat assistant by Intellivex AI. Write code, debug errors, plan projects, analyze data, and more.",
+      "url": "https://intellivexai.com",
+      "author": {
+        "@type": "Organization",
+        "name": "Intellivex AI",
+        "url": "https://intellivexai.com"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Multi-turn AI conversations",
+        "Code execution sandbox",
+        "Voice input",
+        "File attachments",
+        "Conversation export",
+        "Dark and light mode"
+      ]
+    }
+    </script>
+
+    <!-- ── PWA Service Worker ── -->
     <script>
-      // Register service worker for PWA
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js').catch(() => {});

@@ -25,6 +25,7 @@ export function IntellivexLogo({ size = 24, colored = false, className = '' }: L
     <img
       src="/logo-white.svg"
       alt="Intellivex AI"
+      aria-label="Intellivex AI Logo"
       width={size}
       height={size}
       className={`logo-img ${!colored ? className : ''}`}

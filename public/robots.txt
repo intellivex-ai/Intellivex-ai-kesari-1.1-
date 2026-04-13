@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+# Block common AI/data scraper bots from API routes
+User-agent: GPTBot
+Disallow: /api/
+
+User-agent: CCBot
+Disallow: /api/
+
+User-agent: anthropic-ai
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://intellivexai.in/sitemap.xml
