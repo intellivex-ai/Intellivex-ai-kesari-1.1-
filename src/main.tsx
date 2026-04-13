@@ -19,8 +19,8 @@ if (!PUBLISHABLE_KEY) {
 // so we detect them here and render the 404 page.
 function is404(): boolean {
   const path = window.location.pathname
-  // Allow root and any hash-based navigation (Clerk uses hash routing)
-  return path !== '/' && !path.startsWith('/#') && path !== ''
+  // Allow root (Clerk hash routing will just have pathname === '/')
+  return path !== '/' && path !== ''
 }
 
 // Bridge Clerk's getToken into the API client
