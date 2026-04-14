@@ -154,14 +154,25 @@ export async function streamChat({
     return
   }
 
-  if (!response.ok) {
-    let errorDetail = ''
-    try {
-      const errorJson = await response.json()
-      errorDetail = errorJson.detail || errorJson.error || ''
-    } catch {
-      // Not JSON
-    }
+    if (!response.ok) {
+      let errorDetail = ''
+      const contentType = response.headers.get('content-type') || ''
+      
+      try {
+        if (contentType.includes('application/json')) {
+          const errorJson = await response.json()
+          errorDetail = errorJson.detail || errorJson.error || errorJson.message || ''
+        } else {
+          // Try to get a snippet from the HTML/text error page
+          const text = await response.text()
+          errorDetail = text.slice(0, 100).replace(/<[^>]*>/g, '').trim()
+          if (text.includes('Vercel') || text.includes('Deployment')) {
+            errorDetail = `Server crash or timeout (Vercel: ${errorDetail})`
+          }
+        }
+      } catch {
+        // Not readable
+      }
     const errorMsg = errorDetail 
       ? `API error (${response.status}): ${errorDetail}` 
       : `API error: ${response.status}`

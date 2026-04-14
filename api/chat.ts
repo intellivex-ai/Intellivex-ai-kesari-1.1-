@@ -10,8 +10,16 @@ const CLERK_SECRET = process.env.CLERK_SECRET_KEY || ''
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || ''
 const OPENAI_KEY = process.env.OPENAI_API_KEY || ''
 
-// ── Clients ───────────────────────────────────────────────────────────────────
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+// ── Clients (Lazy) ────────────────────────────────────────────────────────────
+let supabaseClient: any = null
+function getSupabase() {
+  if (supabaseClient) return supabaseClient
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    throw new Error('Server configuration error: Supabase keys missing')
+  }
+  supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY)
+  return supabaseClient
+}
 
 // ── System Prompt ─────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are Kesari 1.2, an AI assistant made by Intellivex AI.
@@ -64,14 +72,13 @@ async function getUserId(req: VercelRequest): Promise<string | null> {
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
+  try {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' })
+    }
 
-  // Safety check for critical config
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    return res.status(500).json({ error: 'Server configuration error: Supabase keys missing' })
-  }
+    // Safety check for critical config managed via getter
+    const supabase = getSupabase()
 
   const userId = await getUserId(req)
   if (!userId) return res.status(401).json({ error: 'Unauthorized' })
@@ -297,4 +304,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   res.write('data: [DONE]\n\n')
   res.end()
+  } catch (error: any) {
+    console.error('CHAT_API_CRASH:', error)
+    // If we already started streaming, we can't send a JSON response.
+    // But Vercel functions generally don't stream like this without issues if they crash.
+    if (!res.writableEnded) {
+      res.status(500).json({ 
+        error: 'API failure', 
+        detail: error.message || 'Unknown server error' 
+      })
+    }
+  }
 }
