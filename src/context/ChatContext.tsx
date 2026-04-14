@@ -13,6 +13,7 @@ import {
 import skillsPrompt from '../../skills.md?raw'
 import { AGENTS, parseAgentMention } from '../lib/agents'
 import type { AgentId } from '../lib/agents'
+import { retrieveMemory, addMemory, formatMemoryForPrompt } from '../lib/memory'
 
 // ── Image intent detection ────────────────────────────────────────────────────
 const IMAGE_INTENT_RE =
@@ -369,6 +370,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [generateImage])
 
   const sendMessage = useCallback(async (text: string, style?: string, attachments?: string[]) => {
+    // Check for image attachments - current model doesn't support image input
+    if (attachments && attachments.length > 0) {
+      alert("This AI model doesn't support image input. You can generate images using descriptive prompts, but cannot analyze uploaded images.")
+      return
+    }
+
     // Parse @Agent mentions (e.g. "@coder write a React hook")
     const { agentId: mentionedAgent, cleanText } = parseAgentMention(text)
     const resolvedAgentId = mentionedAgent ?? activeAgentId
@@ -425,11 +432,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController()
     abortRef.current = controller
 
-    // Build effective system prompt: base + agent overlay
+    // Build effective system prompt: base + agent overlay + neural memory
     const basePrompt = localStorage.getItem('kesari-system-prompt') || skillsPrompt
-    const effectivePrompt = resolvedAgent.systemPromptOverlay
+    const agentPrompt = resolvedAgent.systemPromptOverlay
       ? `${basePrompt}\n\n${resolvedAgent.systemPromptOverlay}`
       : basePrompt
+
+    // Neural Sync: retrieve relevant memory chunks
+    let effectivePrompt = agentPrompt
+    try {
+      const memChunks = await retrieveMemory(finalText, 3)
+      if (memChunks.length > 0) {
+        const memSection = formatMemoryForPrompt(memChunks)
+        effectivePrompt = `${agentPrompt}\n\n${memSection}`
+      }
+    } catch { /* Memory retrieval is non-blocking */ }
 
     // ── Word-by-word smooth streaming (throttled at ~60fps) ──────────────────
     let accumulated = ''
@@ -460,6 +477,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         abortRef.current = null
         dispatch({ type: 'FINALIZE_MSG', payload: { id: tempAiId, content: fullContent || accumulated } })
         dispatch({ type: 'SET_STREAMING', payload: false })
+
+        // Neural Sync: index messages into memory (non-blocking)
+        const finalContent = fullContent || accumulated
+        if (finalContent.length > 30) {
+          addMemory(finalText, { type: 'user', chatId: currentChatId }).catch(() => {})
+          addMemory(finalContent, { type: 'assistant', chatId: currentChatId }).catch(() => {})
+        }
+
         setTimeout(async () => {
           if (stateRef.current.streaming) return
           try {

@@ -25,11 +25,13 @@ interface WorkspaceState {
   previewCode: string
   previewLang: string
   isRunning: boolean
+  panelWidth: number
 
   // Actions
   openWorkspace: (code?: string, lang?: string) => void
   closeWorkspace: () => void
   setTab: (tab: WorkspaceTab) => void
+  setPanelWidth: (width: number) => void
   runCode: (code: string, lang: string) => void
   clearOutputs: () => void
   addFile: (file: WorkspaceFile) => void
@@ -46,6 +48,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   previewCode: '',
   previewLang: '',
   isRunning: false,
+  panelWidth: 46, // default 46%
 
   openWorkspace: (code = '', lang = 'html') => {
     set({ open: true, previewCode: code, previewLang: lang, activeTab: 'preview' })
@@ -54,6 +57,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   closeWorkspace: () => set({ open: false }),
 
   setTab: (tab) => set({ activeTab: tab }),
+
+  setPanelWidth: (width) => set({ panelWidth: width }),
 
   runCode: async (code, lang) => {
     const { sandboxOutputs } = get()

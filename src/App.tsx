@@ -6,10 +6,10 @@ import {
   MessageSquare, X, Menu, Sun, Moon, RotateCcw, Loader2,
   Square, Download, Mic, MicOff, Paperclip, ChevronDown,
   Sparkles, Palette, AlertCircle, Plus,
-  Volume2, Globe, FileImage,
+  Volume2, VolumeX, Globe, FileImage,
   ImageIcon, ThumbsUp, ThumbsDown, MoreHorizontal, PanelLeft, ArrowDown,
-  Code2, Brain, Zap, Terminal, PanelLeftClose, LayoutPanelLeft,
-  BrainCircuit, ChevronRight, Microscope, Layers,
+  Code2, Zap, Terminal, PanelLeftClose, LayoutPanelLeft,
+  BrainCircuit, ChevronRight, Microscope, Layers, Radio,
 } from "lucide-react";
 import { useChatContext, AVAILABLE_MODELS, isImageRequest } from "./context/ChatContext";
 import type { UIMessage, UIChat } from "./context/ChatContext";
@@ -17,7 +17,11 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { IntellivexLogo } from "./components/Logo";
 import { WorkspacePanel } from "./components/WorkspacePanel";
 import { AgentSelector } from "./components/AgentSelector";
+import { VisionHUD, VisionChips } from "./components/VisionHUD";
+import { VoiceOrb } from "./components/VoiceOrb";
 import { useWorkspaceStore } from "./stores/workspaceStore";
+import { VisionProvider, useVision } from "./context/VisionContext";
+import { VoiceProvider, useVoice } from "./context/VoiceContext";
 import { AGENTS } from "./lib/agents";
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -66,15 +70,6 @@ function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 // ── Suggestions ───────────────────────────────────────────────────────────────
-const SUGGESTIONS = [
-  { heading: "Write & debug code", sub: "Build a React hook that debounces API calls", icon: <Code2 size={15} /> },
-  { heading: "Explain a concept", sub: "How does RAG work in modern AI systems?", icon: <Brain size={15} /> },
-  { heading: "Plan a project", sub: "A 4-week launch roadmap for a SaaS startup", icon: <Zap size={15} /> },
-  { heading: "Draft content", sub: "Write a cold email to a venture capitalist", icon: <IntellivexLogo size={15} /> },
-  { heading: "Generate art", sub: "Draw a cyberpunk samurai at golden-hour sunset", icon: <Sparkles size={15} /> },
-  { heading: "Analyze data", sub: "Write SQL to find the top 10 users by activity", icon: <Terminal size={15} /> },
-];
-
 // ── Image style definitions ────────────────────────────────────────────────────
 const IMAGE_STYLES = [
   { id: 'realistic', label: 'Realistic', emoji: '📸' },
@@ -542,16 +537,28 @@ function MessageRow({ msg, onRegenerate, onRegenerateImage, isLast, streaming, o
     setTimeout(() => setCopied(false), 2000);
   };
 
+  let voice: ReturnType<typeof useVoice> | null = null;
+  try { voice = useVoice(); } catch { /* VoiceProvider not mounted yet */ }
+
   const toggleTTS = () => {
     if (playingTTS) {
+      voice?.stopSpeaking();
       window.speechSynthesis.cancel();
       setPlayingTTS(false);
     } else {
-      const u = new SpeechSynthesisUtterance(msg.content);
-      u.onend = () => setPlayingTTS(false);
-      u.onerror = () => setPlayingTTS(false);
       setPlayingTTS(true);
-      window.speechSynthesis.speak(u);
+      if (voice) {
+        voice.speakText(msg.content);
+        // Track speaking state
+        const check = setInterval(() => {
+          if (!voice?.speaking) { setPlayingTTS(false); clearInterval(check); }
+        }, 500);
+      } else {
+        const u = new SpeechSynthesisUtterance(msg.content);
+        u.onend = () => setPlayingTTS(false);
+        u.onerror = () => setPlayingTTS(false);
+        window.speechSynthesis.speak(u);
+      }
     }
   };
 
@@ -702,16 +709,41 @@ function MessageRow({ msg, onRegenerate, onRegenerateImage, isLast, streaming, o
   );
 }
 
-// ── Empty State ───────────────────────────────────────────────────────────────
-function EmptyState({ onPick }: { onPick: (t: string) => void }) {
+// ── Empty State (audio-reactive) ──────────────────────────────────────────────
+function EmptyState() {
+  let voice: ReturnType<typeof useVoice> | null = null;
+  try { voice = useVoice(); } catch { /* not mounted */ }
+  const { frequencyData, speaking } = voice ?? { frequencyData: null, speaking: false };
+
+  // Compute glow amplitude from frequency data
+  const avgAmp = frequencyData
+    ? Array.from(frequencyData.slice(0, 8)).reduce((s, v) => s + v, 0) / 8 / 255
+    : 0;
+  const glowSize = speaking ? 8 + avgAmp * 40 : 20;
+  const glowOpacity = speaking ? 0.2 + avgAmp * 0.5 : 0.3;
+
   return (
-    <div className="empty-state">
+    <motion.div 
+      className="empty-state"
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+    >
       <motion.div
         className="empty-logo"
-        animate={{ y: [0, -10, 0], filter: ["drop-shadow(0 0 0px rgba(16,185,129,0))", "drop-shadow(0 0 20px rgba(16,185,129,0.3))", "drop-shadow(0 0 0px rgba(16,185,129,0))"] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        animate={speaking
+          ? { filter: `drop-shadow(0 0 ${glowSize}px rgba(16,185,129,${glowOpacity}))` }
+          : {
+              y: [0, -10, 0],
+              filter: ["drop-shadow(0 0 0px rgba(16,185,129,0))", "drop-shadow(0 0 20px rgba(16,185,129,0.3))", "drop-shadow(0 0 0px rgba(16,185,129,0))"]
+            }
+        }
+        transition={speaking
+          ? { duration: 0.08, ease: "linear" }
+          : { duration: 4, repeat: Infinity, ease: "easeInOut" }
+        }
       >
-        <IntellivexLogo size={120} />
+        <IntellivexLogo size={100} />
       </motion.div>
       <motion.h1
         className="empty-title"
@@ -719,7 +751,7 @@ function EmptyState({ onPick }: { onPick: (t: string) => void }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       >
-        How can I help you today?
+        Hello! How can I assist you today?
       </motion.h1>
       <motion.p
         className="empty-sub"
@@ -727,50 +759,30 @@ function EmptyState({ onPick }: { onPick: (t: string) => void }) {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.8 }}
       >
-        Kesari 1.2 · The studio-grade AI by Intellivex
+        Kesari 1.2 · Intellivex AI Studio
       </motion.p>
-      <motion.div
-        className="suggestions"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      >
-        {SUGGESTIONS.map((s, i) => (
-          <motion.button
-            key={i}
-            className="suggestion-card"
-            onClick={() => onPick(s.sub)}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 + i * 0.08 }}
-            whileHover={{ y: -5, scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <div className="suggestion-icon">{s.icon}</div>
-            <p className="suggestion-heading">{s.heading}</p>
-            <p className="suggestion-sub">{s.sub}</p>
-          </motion.button>
-        ))}
-      </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
-// ── Voice input hook ──────────────────────────────────────────────────────────
+// ── Voice input hook (delegates to VoiceContext) ─────────────────────────────
 function useVoiceInput(onResult: (t: string) => void) {
-  const [listening, setListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
+  let voice: ReturnType<typeof useVoice> | null = null;
+  try { voice = useVoice(); } catch { /* not mounted */ }
+  const { listening = false, toggleListening } = voice ?? {};
   const toggle = useCallback(() => {
-    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
-    if (!SR) { alert("Voice input not supported in this browser."); return; }
-    if (listening) { recognitionRef.current?.stop(); setListening(false); return; }
-    const rec = new SR();
-    rec.continuous = false; rec.interimResults = false; rec.lang = "en-US";
-    rec.onresult = (e: any) => { onResult(e.results[0][0].transcript); setListening(false); };
-    rec.onerror = () => setListening(false);
-    rec.onend = () => setListening(false);
-    rec.start(); recognitionRef.current = rec; setListening(true);
-  }, [listening, onResult]);
+    if (toggleListening) {
+      toggleListening(onResult);
+    } else {
+      // Raw fallback
+      const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+      if (!SR) { alert("Voice input not supported in this browser."); return; }
+      const rec = new SR();
+      rec.continuous = false; rec.interimResults = false; rec.lang = "en-US";
+      rec.onresult = (e: any) => onResult(e.results[0][0].transcript);
+      rec.start();
+    }
+  }, [toggleListening, onResult]);
   return { listening, toggle };
 }
 
@@ -785,9 +797,10 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
 }) {
   const [value, setValue] = useState("");
   const [imageStyle, setImageStyle] = useState<ImageStyleId | null>(null);
-  const [attachments, setAttachments] = useState<{ name: string, url: string }[]>([]);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const [showAgentPopover, setShowAgentPopover] = useState(false);
   const { webSearchEnabled, setWebSearchEnabled, activeAgentId, setActiveAgentId } = useChatContext();
+  const { stagedFiles, addFile, clearFiles } = useVision();
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const ringRef = useRef<SVGCircleElement>(null);
@@ -831,58 +844,69 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
   };
 
   const send = () => {
-    if (!value.trim() && attachments.length === 0) return;
+    const allAttachments = stagedFiles.map(f => f.dataUrl);
+    if (!value.trim() && allAttachments.length === 0) return;
     if (disabled) return;
-    onSend(value.trim(), imageStyle ?? undefined, attachments.map(a => a.url));
+    onSend(value.trim(), imageStyle ?? undefined, allAttachments.length > 0 ? allAttachments : undefined);
     setValue("");
-    setAttachments([]);
+    clearFiles();
     if (ref.current) ref.current.style.height = "auto";
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    const isImage = file.type.startsWith('image/');
-    reader.onload = (ev) => {
-      const content = ev.target?.result as string;
-      if (isImage) {
-        setAttachments(prev => [...prev, { name: file.name, url: content }]);
-      } else {
-        const header = `**[File: ${file.name}]**\n\`\`\`\n${content.slice(0, 8000)}\n\`\`\`\n\n`;
-        setValue(prev => header + (prev || ""));
-      }
-      ref.current?.focus();
-    };
-    if (isImage) reader.readAsDataURL(file);
-    else reader.readAsText(file);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    for (const file of files) {
+      await addFile(file);
+    }
+    ref.current?.focus();
     e.target.value = "";
+  };
+
+  // @ trigger: show agent popover
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setValue(val);
+    resize();
+    // Show agent popover when @ is typed at start
+    if (val.startsWith('@') && !val.includes(' ')) {
+      setShowAgentPopover(true);
+    } else {
+      setShowAgentPopover(false);
+    }
   };
 
   // Variables used for ref update above
 
   return (
     <div className="input-area">
-      <div className="input-wrap">
-        {attachments.length > 0 && (
-          <div className="attachments-preview">
-            {attachments.map((att, i) => (
-              <div key={i} className="attachment-chip">
-                <FileImage size={11} />
-                <span className="att-name">{att.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
-                  title="Remove attachment"
-                  aria-label="Remove attachment"
-                >
-                  <X size={10} />
-                </button>
-              </div>
-            ))}
-          </div>
+      {/* Agent @ popover */}
+      <AnimatePresence>
+        {showAgentPopover && (
+          <motion.div
+            className="at-agent-popover"
+            initial={{ opacity: 0, y: 6, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.96 }}
+            transition={{ duration: 0.15 }}
+          >
+            <p className="at-popover-label">Switch agent</p>
+            <AgentSelector
+              activeAgentId={activeAgentId}
+              onSelect={(id) => {
+                setActiveAgentId(id);
+                setValue('@' + id + ' ');
+                setShowAgentPopover(false);
+                ref.current?.focus();
+              }}
+              compact
+            />
+          </motion.div>
         )}
-        <div className={`input-box pill-box ${listening ? "listening" : ""} ${disabled ? "streaming-active" : ""} ${isImageMode ? "image-mode" : ""}`}>
+      </AnimatePresence>
+      <div className="input-wrap">
+        {/* Vision Chips (staged files) */}
+        <VisionChips />
+        <div className={`input-box pill-box ${listening ? "listening" : ""} ${disabled ? "streaming-active" : ""} ${isImageMode ? "image-mode" : ""} ${stagedFiles.length > 0 ? "has-attachments" : ""}`}>
           <div className="plus-menu-wrap" ref={plusMenuRef}>
             <button
               type="button"
@@ -929,17 +953,17 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
             </AnimatePresence>
           </div>
 
-          <input ref={fileRef} type="file" className="file-input-hidden" title="Attach file"
-            accept="image/*,.txt,.md,.py,.js,.ts,.tsx,.jsx,.json,.csv,.html,.css,.yaml,.yml,.sh,.sql"
+          <input ref={fileRef} type="file" className="file-input-hidden" title="Attach file" multiple
+            accept="image/*,.pdf,.txt,.md,.py,.js,.ts,.tsx,.jsx,.json,.csv,.html,.css,.yaml,.yml,.sh,.sql"
             onChange={handleFileChange}
           />
           
           <textarea
             ref={ref}
             value={value}
-            onChange={(e) => { setValue(e.target.value); resize(); }}
+            onChange={handleTextChange}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder={listening ? "🎤 Listening…" : isImageMode ? "Describe your image…" : "Ask anything…"}
+            placeholder={listening ? "🎤 Listening…" : isImageMode ? "Describe your image…" : stagedFiles.length > 0 ? "Ask about these files…" : "Ask anything… or type @ for agents"}
             rows={1}
           />
 
@@ -969,9 +993,9 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
                     />
                   </svg>
                 )}
-                <motion.button onClick={send} disabled={!value.trim() && attachments.length === 0} className="send-btn" title="Send message"
-                  whileHover={value.trim() || attachments.length > 0 ? { scale: 1.08 } : {}} 
-                  whileTap={value.trim() || attachments.length > 0 ? { scale: 0.92 } : {}}>
+                <motion.button onClick={send} disabled={!value.trim() && stagedFiles.length === 0} className="send-btn" title="Send message"
+                  whileHover={value.trim() || stagedFiles.length > 0 ? { scale: 1.08 } : {}} 
+                  whileTap={value.trim() || stagedFiles.length > 0 ? { scale: 0.92 } : {}}>
                   {isImageMode ? <Sparkles size={14} /> : <Send size={14} />}
                 </motion.button>
               </div>
@@ -981,7 +1005,7 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
         <p className="input-hint">
           {isImageMode
             ? <><span className="img-mode-hint">✦ Image mode</span> · Select a style with <Palette size={10} /></>
-            : <><kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line</>
+            : <><kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line · <kbd>@</kbd> for agents</>
           }
           {listening && <motion.span className="voice-hint" animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1, repeat: Infinity }}>🔴 Recording</motion.span>}
         </p>
@@ -1357,8 +1381,14 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <ToastProvider>
-        <ArtifactCtx.Provider value={() => { }}>
+      <VisionProvider>
+        <VoiceProvider>
+          <ToastProvider>
+            <ArtifactCtx.Provider value={() => { }}>
+              {/* Vision drag-drop HUD (global) */}
+              <VisionHUD />
+              {/* Voice immersive orb (global) */}
+              <VoiceOrb />
           <div className={`app ${darkMode ? '' : 'light'} ${desktopSidebar ? 'desktop-open' : 'desktop-closed'} ${workspaceOpen ? 'workspace-open' : ''}`}>
             <div className="global-orbs">
               <div className="global-orb global-orb-1" />
@@ -1413,6 +1443,8 @@ export default function App() {
                       </AnimatePresence>
                     </div>
                   )}
+                  {/* Immersive Voice Mode button */}
+                  <ImmersiveVoiceBtn />
                   <button
                     className={`icon-btn ${workspaceOpen ? 'active' : ''}`}
                     onClick={() => workspaceOpen ? closeWorkspace() : openWorkspace()}
@@ -1432,10 +1464,10 @@ export default function App() {
                   {msgLoading ? (
                     <div className="msgs-loading"><Loader2 size={20} className="spin" /><span>Loading conversation…</span></div>
                   ) : !activeId && messages.length === 0 ? (
-                    <EmptyState onPick={handleSend} />
+                    <EmptyState />
                   ) : (
                     <>
-                      <AnimatePresence initial={false}>
+                      <AnimatePresence initial={false} mode="popLayout">
                         {messages.map((msg, i) => (
                           <MessageRow
                             key={msg.id}
@@ -1487,8 +1519,35 @@ export default function App() {
               systemPrompt={systemPrompt} onSystemPromptChange={setSystemPrompt}
             />
           </div>
-        </ArtifactCtx.Provider>
-      </ToastProvider>
+            </ArtifactCtx.Provider>
+          </ToastProvider>
+        </VoiceProvider>
+      </VisionProvider>
     </ErrorBoundary>
+  );
+}
+
+// ── Immersive Voice Button (needs VoiceContext) ───────────────────────────────
+function ImmersiveVoiceBtn() {
+  let voice: ReturnType<typeof useVoice> | null = null;
+  try { voice = useVoice(); } catch { return null; }
+  const { immersiveMode, toggleImmersive, speaking, listening } = voice;
+  const isActive = immersiveMode || speaking || listening;
+  return (
+    <motion.button
+      className={`icon-btn voice-immersive-btn ${isActive ? 'active' : ''}`}
+      onClick={toggleImmersive}
+      title={immersiveMode ? 'Exit voice mode' : 'Immersive voice mode'}
+      whileHover={{ scale: 1.08 }}
+      whileTap={{ scale: 0.92 }}
+    >
+      {speaking ? (
+        <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 0.8, repeat: Infinity }}>
+          <VolumeX size={15} />
+        </motion.span>
+      ) : (
+        <Radio size={15} />
+      )}
+    </motion.button>
   );
 }

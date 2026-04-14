@@ -1,10 +1,13 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Terminal, Eye, FolderOpen, Play, Trash2,
-  Loader2, Code2, RefreshCw,
+  Loader2, Code2, RefreshCw, Download, Zap
 } from 'lucide-react'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { indexWorkspaceFile } from '../lib/memory'
+// @ts-ignore — react-live types may be external
+import { LiveProvider, LivePreview, LiveError } from 'react-live'
 
 // ── Sandbox srcdoc helper ────────────────────────────────────────────────────
 function getSandboxSrc(code: string, lang: string): string {
@@ -13,6 +16,75 @@ function getSandboxSrc(code: string, lang: string): string {
     body { font-family: system-ui, sans-serif; padding: 1.5rem; background: #0f1219; color: #e2e8f0; }
     * { box-sizing: border-box; }
   </style></head><body><script>${code.replace(/<\/script>/g, '<\\/script>')}<\/script></body></html>`
+}
+
+// ── Detect if code is React (JSX/TSX) ────────────────────────────────────────
+function isReactCode(lang: string, code: string): boolean {
+  const reactLangs = ['jsx', 'tsx']
+  if (reactLangs.includes(lang.toLowerCase())) return true
+  return code.includes('React') || code.includes('useState') || (code.includes('return (') && code.includes('<'))
+}
+
+// ── React Live Sandbox ───────────────────────────────────────────────────────
+function ReactLiveSandbox({ code }: { code: string }) {
+  // Strip import statements for react-live (it provides React scope)
+  const cleanCode = code
+    .replace(/^import\s+.*?from\s+['"][^'"]*['"]\s*;?\s*/gm, '')
+    .replace(/^export\s+default\s+/gm, '')
+    .trim()
+
+  return (
+    <div className="ws-react-live">
+      <LiveProvider
+        code={cleanCode}
+        noInline={false}
+      >
+        <div className="ws-react-preview">
+          <LivePreview />
+        </div>
+        <LiveError className="ws-react-error" />
+      </LiveProvider>
+    </div>
+  )
+}
+
+// ── ZIP Export helper ─────────────────────────────────────────────────────────
+async function exportAsZip(code: string, lang: string, filename?: string) {
+  try {
+    // Dynamically import jszip
+    const JSZip = (await import('jszip')).default
+    const zip = new JSZip()
+    const ext = lang === 'tsx' ? 'tsx' : lang === 'jsx' ? 'jsx' : lang === 'html' ? 'html' : lang === 'css' ? 'css' : 'js'
+    const name = filename || `component.${ext}`
+    zip.file(name, code)
+    
+    if (['tsx', 'jsx', 'ts', 'js'].includes(ext)) {
+      zip.file('package.json', JSON.stringify({
+        name: 'intellivex-export',
+        version: '1.0.0',
+        dependencies: { react: '^18', 'react-dom': '^18' },
+        devDependencies: { typescript: '^5', '@types/react': '^18' }
+      }, null, 2))
+    }
+    
+    const blob = await zip.generateAsync({ type: 'blob' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `intellivex-export-${Date.now()}.zip`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    console.warn('[WorkspacePanel] ZIP export fallback:', e)
+    // Fallback: download as raw file
+    const blob = new Blob([code], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename || `export.${lang}`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 }
 
 // ── Terminal Output ───────────────────────────────────────────────────────────
@@ -70,6 +142,14 @@ function TerminalOutput() {
 function FileExplorer() {
   const { files, activeFile, setActiveFile } = useWorkspaceStore()
 
+  // Auto-index files into memory when opened
+  useEffect(() => {
+    if (activeFile) {
+      const f = files.find(f => f.name === activeFile)
+      if (f) indexWorkspaceFile(f.name, f.content ?? '').catch(() => { /* silent */ })
+    }
+  }, [activeFile, files])
+
   if (files.length === 0) {
     return (
       <div className="ws-files-empty">
@@ -96,13 +176,13 @@ function FileExplorer() {
   )
 }
 
-// ── Tab Button ────────────────────────────────────────────────────────────────
-function WsTab({ label, icon, active, onClick }: {
-  label: string; icon: React.ReactNode
-  active: boolean; onClick: () => void
+function WsTab({ label, icon, active, onClick, id }: {
+  label: string; icon: React.ReactNode;
+  active: boolean; onClick: () => void; id: string;
 }) {
   return (
     <button
+      id={`ws-tab-${id}`}
       className={`ws-tab ${active ? 'ws-tab-active' : ''}`}
       onClick={onClick}
       title={label}
@@ -118,9 +198,58 @@ export function WorkspacePanel() {
   const {
     open, activeTab, setTab, closeWorkspace,
     previewCode, previewLang, runCode, isRunning,
+    panelWidth, setPanelWidth
   } = useWorkspaceStore()
 
+  const [reactLiveMode, setReactLiveMode] = useState(false)
+  const isReact = isReactCode(previewLang, previewCode)
   const canRun = ['js', 'javascript', 'ts', 'typescript', 'html'].includes(previewLang.toLowerCase())
+
+  // Resizer logic
+  const isDragging = useRef(false)
+  const [dragging, setDragging] = useState(false)
+
+  const startResizing = (e: React.MouseEvent) => {
+    isDragging.current = true
+    setDragging(true)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', stopResizing)
+    document.body.style.cursor = 'ew-resize'
+  }
+
+  const stopResizing = () => {
+    isDragging.current = false
+    setDragging(false)
+    document.removeEventListener('mousemove', handleMouseMove)
+    document.removeEventListener('mouseup', stopResizing)
+    document.body.style.cursor = 'default'
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging.current) return
+    const newWidth = ((window.innerWidth - e.clientX) / window.innerWidth) * 100
+    if (newWidth > 20 && newWidth < 85) {
+      setPanelWidth(newWidth)
+    }
+  }
+
+  // Sliding tab indicator logic
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 })
+  useEffect(() => {
+    const activeEl = document.getElementById(`ws-tab-${activeTab}`)
+    if (activeEl) {
+      setIndicatorStyle({
+        left: activeEl.offsetLeft,
+        width: activeEl.offsetWidth
+      })
+    }
+  }, [activeTab, open])
+
+  // Auto-switch to react live mode for JSX/TSX
+  useEffect(() => {
+    if (isReact) setReactLiveMode(true)
+    else setReactLiveMode(false)
+  }, [isReact, previewCode])
 
   return (
     <AnimatePresence>
@@ -128,42 +257,63 @@ export function WorkspacePanel() {
         <motion.div
           className="workspace-panel"
           initial={{ width: 0, opacity: 0 }}
-          animate={{ width: '46%', opacity: 1 }}
+          animate={{ width: `${panelWidth}%`, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
-          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
+          {/* Resizer Handle */}
+          <div 
+            className={`ws-resizer ${dragging ? 'dragging' : ''}`} 
+            onMouseDown={startResizing}
+          />
+
           {/* Panel header */}
           <div className="ws-header">
             <div className="ws-tabs">
-              <WsTab label="Preview" icon={<Eye size={12} />} active={activeTab === 'preview'} onClick={() => setTab('preview')} />
-              <WsTab label="Terminal" icon={<Terminal size={12} />} active={activeTab === 'terminal'} onClick={() => setTab('terminal')} />
-              <WsTab label="Files" icon={<FolderOpen size={12} />} active={activeTab === 'files'} onClick={() => setTab('files')} />
+              <motion.div 
+                className="ws-tab-indicator"
+                animate={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+                transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+              />
+              <WsTab id="preview" label="Preview" icon={<Eye size={13} />} active={activeTab === 'preview'} onClick={() => setTab('preview')} />
+              <WsTab id="terminal" label="Terminal" icon={<Terminal size={13} />} active={activeTab === 'terminal'} onClick={() => setTab('terminal')} />
+              <WsTab id="files" label="Files" icon={<FolderOpen size={13} />} active={activeTab === 'files'} onClick={() => setTab('files')} />
             </div>
             <div className="ws-header-actions">
-              {previewCode && canRun && (
+              {/* React Live toggle */}
+              {previewCode && isReact && activeTab === 'preview' && (
+                <button
+                  className={`ws-icon-btn ws-react-toggle ${reactLiveMode ? 'active' : ''}`}
+                  onClick={() => setReactLiveMode(!reactLiveMode)}
+                  title={reactLiveMode ? 'Switch to iframe preview' : 'Switch to React Live'}
+                >
+                  <Zap size={13} />
+                </button>
+              )}
+              {/* Export ZIP */}
+              {previewCode && (
+                <button
+                  className="ws-icon-btn ws-export-btn"
+                  onClick={() => exportAsZip(previewCode, previewLang)}
+                  title="Export as ZIP"
+                >
+                  <Download size={14} />
+                </button>
+              )}
+              {previewCode && canRun && !reactLiveMode && (
                 <motion.button
                   className={`ws-run-btn ${isRunning ? 'running' : ''}`}
                   onClick={() => runCode(previewCode, previewLang)}
                   disabled={isRunning}
-                  whileHover={{ scale: 1.04 }}
-                  whileTap={{ scale: 0.94 }}
-                  title="Run code"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  {isRunning ? <Loader2 size={12} className="spin" /> : <Play size={12} />}
-                  {isRunning ? 'Running…' : 'Run'}
+                  {isRunning ? <Loader2 size={13} className="spin" /> : <Play size={13} fill="currentColor" />}
+                  <span>{isRunning ? 'Running…' : 'Run'}</span>
                 </motion.button>
               )}
-              {previewCode && (
-                <button
-                  className="ws-icon-btn"
-                  onClick={() => setTab('preview')}
-                  title="Refresh preview"
-                >
-                  <RefreshCw size={12} />
-                </button>
-              )}
-              <button className="ws-icon-btn ws-close-btn" onClick={closeWorkspace} title="Close workspace">
-                <X size={14} />
+              <button className="ws-icon-btn ws-close-btn" onClick={closeWorkspace}>
+                <X size={16} />
               </button>
             </div>
           </div>
@@ -172,18 +322,25 @@ export function WorkspacePanel() {
           <div className="ws-body">
             {activeTab === 'preview' && (
               previewCode ? (
-                <iframe
-                  key={previewCode}
-                  title="Code preview"
-                  sandbox="allow-scripts allow-forms allow-popups"
-                  srcDoc={getSandboxSrc(previewCode, previewLang)}
-                  className="ws-iframe"
-                />
+                reactLiveMode ? (
+                  <ReactLiveSandbox code={previewCode} />
+                ) : (
+                  <iframe
+                    key={previewCode}
+                    title="Code preview"
+                    sandbox="allow-scripts allow-forms allow-popups"
+                    srcDoc={getSandboxSrc(previewCode, previewLang)}
+                    className="ws-iframe"
+                  />
+                )
               ) : (
                 <div className="ws-empty-preview">
-                  <Eye size={32} className="ws-empty-icon" />
-                  <p>No preview yet</p>
-                  <span>Click "Preview" on any code block to render it here.</span>
+                  <div className="ws-empty-box">
+                    <div className="ws-empty-ring" />
+                    <Eye size={48} className="ws-empty-icon" />
+                  </div>
+                  <p>Studio Preview</p>
+                  <span>Select a code artifact to visualize components in real-time.</span>
                 </div>
               )
             )}
