@@ -15,7 +15,7 @@ export interface MemoryChunk {
 }
 
 // ── TF-IDF Helpers ────────────────────────────────────────────────────────────
-function tokenize(text: string): string[] {
+export function tokenize(text: string): string[] {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
@@ -29,7 +29,7 @@ const STOPWORDS = new Set([
   'what', 'when', 'how', 'why', 'there', 'here', 'its', 'also', 'use', 'get',
 ])
 
-function buildTFVector(tokens: string[]): Record<string, number> {
+export function buildTFVector(tokens: string[]): Record<string, number> {
   const freq: Record<string, number> = {}
   const filtered = tokens.filter(t => !STOPWORDS.has(t))
   filtered.forEach(t => { freq[t] = (freq[t] ?? 0) + 1 })
@@ -38,7 +38,7 @@ function buildTFVector(tokens: string[]): Record<string, number> {
   return freq
 }
 
-function cosineSimilarity(a: Record<string, number>, b: Record<string, number>): number {
+export function cosineSimilarity(a: Record<string, number>, b: Record<string, number>): number {
   let dot = 0, normA = 0, normB = 0
   for (const k in a) {
     normA += a[k] ** 2
