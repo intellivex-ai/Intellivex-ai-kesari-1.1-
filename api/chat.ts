@@ -174,8 +174,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Save the last user message to DB (the frontend may have done this too,
   // but this ensures DB consistency if the FE fails)
   const lastMsg = messages[messages.length - 1]
+  let upsertPromise: PromiseLike<any> | null = null;
   if (lastMsg?.role === 'user') {
-    await supabase.from('messages').upsert({
+    upsertPromise = supabase.from('messages').upsert({
       chat_id: chatId,
       role: 'user',
       content: lastMsg.content,
@@ -184,22 +185,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ── Retrieve Memories (RAG) ────────────────────────────────────────────────
   let contextAddon = ''
+  let memoriesPromise: Promise<any> | null = null;
   if (lastMsg?.role === 'user') {
-    try {
-      const queryEmbedding = await embed(lastMsg.content)
-      const { data: memories, error: memErr } = await supabase.rpc('match_memories', {
-        query_embedding: queryEmbedding,
-        match_threshold: 0.72,
-        match_count: 5,
-        filter_user_id: userId,
-      })
+    memoriesPromise = (async () => {
+      try {
+        const queryEmbedding = await embed(lastMsg.content)
+        const { data: memories, error: memErr } = await supabase.rpc('match_memories', {
+          query_embedding: queryEmbedding,
+          match_threshold: 0.72,
+          match_count: 5,
+          filter_user_id: userId,
+        })
 
-      if (!memErr && memories && memories.length > 0) {
-        contextAddon = "\n\n# Relevant Context/Memories:\n" + memories.map((m: any) => `- ${m.content}`).join('\n')
+        if (!memErr && memories && memories.length > 0) {
+          contextAddon = "\n\n# Relevant Context/Memories:\n" + memories.map((m: any) => `- ${m.content}`).join('\n')
+        }
+      } catch (e) {
+        console.error('Failed to retrieve memories', e)
       }
-    } catch (e) {
-      console.error('Failed to retrieve memories', e)
-    }
+    })();
+  }
+
+  if (upsertPromise || memoriesPromise) {
+    await Promise.all([upsertPromise, memoriesPromise].filter(Boolean));
   }
 
   // Build message array: system + conversation history
