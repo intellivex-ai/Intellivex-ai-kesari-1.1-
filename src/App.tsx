@@ -1126,12 +1126,14 @@ function RenameInput({ current, onSave, onCancel }: { current: string; onSave: (
 }
 
 // ── Sidebar ────────────────────────────────────────────────────────────────────
-function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSettings, open, onClose, loading, onToggleDesktop }: {
+function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSettings, open, onClose, loading, onToggleDesktop, onInstall, installable }: {
   chats: UIChat[]; activeId: string | null;
   onSelect: (id: string) => void; onNew: () => void;
   onDelete: (id: string) => void; onRename: (id: string, title: string) => void;
   onSettings: () => void; open: boolean; onClose: () => void; loading: boolean;
   onToggleDesktop?: () => void;
+  onInstall?: () => void;
+  installable?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1232,6 +1234,11 @@ function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSetti
           ))}
         </div>
         <div className="sidebar-footer">
+          {installable && (
+            <button className="sidebar-footer-btn install-btn" onClick={onInstall}>
+              <Download size={14} /> Install App
+            </button>
+          )}
           <button className="sidebar-footer-btn" onClick={onSettings}><Settings size={14} /> Settings</button>
           {showClerkBtn ? (
             <div className="clerk-user-wrap"><ClerkUserButton afterSignOutUrl="/" /><span className="user-name">{userName}</span></div>
@@ -1260,10 +1267,32 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(true);
   const [exportOpen, setExportOpen] = useState(false);
   const [atBottom, setAtBottom] = useState(true);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
   const { open: workspaceOpen, openWorkspace, closeWorkspace } = useWorkspaceStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const { chats, activeId, messages, loading, streaming, msgLoading, imageUsage } = state;
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstallable(false);
+      setDeferredPrompt(null);
+    }
+  };
 
   // Track whether user is at bottom
   useEffect(() => {
@@ -1300,6 +1329,17 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Sync theme-color meta tag with dark mode (dynamic creation to avoid HTML linting errors)
+  useEffect(() => {
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'theme-color');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', darkMode ? '#0a0a0c' : '#ffffff');
+  }, [darkMode]);
+
   const handleNew = useCallback(() => newChat(), [newChat]);
   const handleSelect = useCallback((id: string) => { if (id !== activeId) selectChat(id); }, [activeId, selectChat]);
   const handleSend = useCallback((text: string, style?: string, attachments?: string[]) => sendMessage(text, style, attachments), [sendMessage]);
@@ -1333,6 +1373,8 @@ export default function App() {
               open={mobileSidebar} onClose={() => setMobileSidebar(false)}
               loading={loading}
               onToggleDesktop={() => setDesktopSidebar(!desktopSidebar)}
+              onInstall={handleInstall}
+              installable={isInstallable}
             />
             <div className="main">
               {/* Header */}

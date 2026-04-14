@@ -1,24 +1,54 @@
-const CACHE = 'intellivex-v1'
-const STATIC = ['/', '/index.html']
+const CACHE_NAME = 'kesari-boutique-v1';
+const ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/favicon.svg',
+  '/logo.svg',
+  '/icon-192.png',
+  '/icon-512.png'
+];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)).then(() => self.skipWaiting()))
-})
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS);
+    })
+  );
+  self.skipWaiting();
+});
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  )
-})
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      );
+    })
+  );
+  self.clients.claim();
+});
 
-self.addEventListener('fetch', (e) => {
-  // Network-first for API, cache-first for static
-  if (e.request.url.includes('/api/')) return
-  e.respondWith(
-    fetch(e.request).catch(() =>
-      caches.match(e.request).then(r => r || caches.match('/index.html'))
-    )
-  )
-})
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Bypass cache for API calls to ensure real-time chat data
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // Stale-while-revalidate for everything else
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      const fetchPromise = fetch(request).then((networkResponse) => {
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(request, networkResponse.clone());
+        });
+        return networkResponse;
+      });
+      return cachedResponse || fetchPromise;
+    })
+  );
+});

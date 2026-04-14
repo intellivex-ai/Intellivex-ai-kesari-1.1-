@@ -5,15 +5,7 @@
     <!-- ── Viewport (mobile-friendly) ── -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-    <!-- ── PWA Theme Color (dynamic dark/light) ── -->
-    <script>
-      (function() {
-        const m = document.createElement('meta');
-        m.name = 'theme-color';
-        m.content = window.matchMedia('(prefers-color-scheme: dark)').matches ? '#0d0d0f' : '#ffffff';
-        document.head.appendChild(m);
-      })();
-    </script>
+
 
     <!-- ── Primary SEO ── -->
     <title>Intellivex AI — Kesari 1.1 | Your Intelligent AI Assistant</title>
@@ -41,11 +33,12 @@
     <meta name="twitter:description" content="Chat with Kesari 1.1 — your powerful AI assistant by Intellivex AI." />
     <meta name="twitter:image" content="https://intellivexai.com/og-image.png" />
 
-    <!-- ── PWA / Apple ── -->
+    <!-- ── App (iOS/Android/PWA) ── -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Intellivex AI" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="apple-mobile-web-app-title" content="Kesari AI" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="apple-touch-icon" href="/icon-512.png" />
     <link rel="manifest" href="/manifest.json" />
 
     <!-- ── Favicon ── -->
