@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert'
-import { tokenize, buildTFVector, cosineSimilarity } from './memory'
+import { tokenize, buildTFVector, cosineSimilarity, formatMemoryForPrompt } from './memory'
 
 describe('Memory TF-IDF Helpers', () => {
   describe('tokenize', () => {
@@ -93,4 +93,40 @@ describe('Memory TF-IDF Helpers', () => {
       assert.ok(Math.abs(vector['banana'] - 1 / 3) < 1e-9)
     })
   })
+
+  describe('formatMemoryForPrompt', () => {
+    test('should return empty string for empty chunks', () => {
+      const result = formatMemoryForPrompt([]);
+      assert.strictEqual(result, '');
+    });
+
+    test('should format chunks without labels', () => {
+      const chunks = [
+        { id: '1', content: 'First memory', embedding: {}, metadata: { type: 'user' as const, timestamp: 1 } },
+        { id: '2', content: 'Second memory', embedding: {}, metadata: { type: 'user' as const, timestamp: 2 } }
+      ];
+      const expected = '[INTERNAL_MEMORY — relevant context from previous sessions]:\n[1] First memory\n---\n[2] Second memory';
+      const result = formatMemoryForPrompt(chunks);
+      assert.strictEqual(result, expected);
+    });
+
+    test('should format chunks with labels', () => {
+      const chunks = [
+        { id: '1', content: 'Code memory', embedding: {}, metadata: { type: 'code' as const, timestamp: 1, label: 'app.ts' } }
+      ];
+      const expected = '[INTERNAL_MEMORY — relevant context from previous sessions]:\n[1] (app.ts) Code memory';
+      const result = formatMemoryForPrompt(chunks);
+      assert.strictEqual(result, expected);
+    });
+
+    test('should format mixed chunks', () => {
+      const chunks = [
+        { id: '1', content: 'General memory', embedding: {}, metadata: { type: 'user' as const, timestamp: 1 } },
+        { id: '2', content: 'Code memory', embedding: {}, metadata: { type: 'code' as const, timestamp: 2, label: 'utils.ts' } }
+      ];
+      const expected = '[INTERNAL_MEMORY — relevant context from previous sessions]:\n[1] General memory\n---\n[2] (utils.ts) Code memory';
+      const result = formatMemoryForPrompt(chunks);
+      assert.strictEqual(result, expected);
+    });
+  });
 })
