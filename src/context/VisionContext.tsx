@@ -92,7 +92,7 @@ export function VisionProvider({ children }: { children: ReactNode }) {
     })
 
     const staged: StagedFile = {
-      id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: `file-${crypto.randomUUID()}`,
       name: file.name,
       type,
       dataUrl,

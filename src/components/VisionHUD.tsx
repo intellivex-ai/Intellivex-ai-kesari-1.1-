@@ -55,9 +55,7 @@ export function VisionHUD() {
   const handleDrop = useCallback(async (e: DragEvent) => {
     e.preventDefault()
     const files = Array.from(e.dataTransfer?.files ?? [])
-    for (const file of files) {
-      await addFile(file)
-    }
+    await Promise.all(files.map(file => addFile(file)))
   }, [addFile])
 
   useEffect(() => {

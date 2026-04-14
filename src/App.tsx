@@ -856,9 +856,7 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    for (const file of files) {
-      await addFile(file);
-    }
+    await Promise.all(files.map(file => addFile(file)));
     ref.current?.focus();
     e.target.value = "";
   };
