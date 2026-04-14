@@ -6,7 +6,7 @@ import {
   MessageSquare, X, Menu, Sun, Moon, RotateCcw, Loader2,
   Square, Download, Mic, MicOff, Paperclip, ChevronDown,
   Sparkles, Palette, AlertCircle, Plus,
-  Volume2, VolumeX, Globe, FileImage,
+  Volume2, VolumeX, Globe,
   ImageIcon, ThumbsUp, ThumbsDown, MoreHorizontal, PanelLeft, ArrowDown,
   Code2, Zap, Terminal, PanelLeftClose, LayoutPanelLeft,
   BrainCircuit, ChevronRight, Microscope, Layers, Radio,

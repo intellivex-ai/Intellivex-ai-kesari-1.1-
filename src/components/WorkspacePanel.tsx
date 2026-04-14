@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Terminal, Eye, FolderOpen, Play, Trash2,
-  Loader2, Code2, RefreshCw, Download, Zap
+  Loader2, Code2, Download, Zap
 } from 'lucide-react'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { indexWorkspaceFile } from '../lib/memory'
@@ -209,7 +209,7 @@ export function WorkspacePanel() {
   const isDragging = useRef(false)
   const [dragging, setDragging] = useState(false)
 
-  const startResizing = (e: React.MouseEvent) => {
+  const startResizing = (_e: React.MouseEvent) => {
     isDragging.current = true
     setDragging(true)
     document.addEventListener('mousemove', handleMouseMove)

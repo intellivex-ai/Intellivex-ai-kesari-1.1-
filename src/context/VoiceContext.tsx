@@ -22,26 +22,6 @@ export function useVoice() {
   return ctx
 }
 
-// ── Web Audio Analyser ────────────────────────────────────────────────────────
-function createAnalyserForAudio(audio: HTMLAudioElement): {
-  analyser: AnalyserNode
-  dataArray: Uint8Array
-  cleanup: () => void
-} {
-  const ctx = new AudioContext()
-  const source = ctx.createMediaElementSource(audio)
-  const analyser = ctx.createAnalyser()
-  analyser.fftSize = 256
-  source.connect(analyser)
-  analyser.connect(ctx.destination)
-  const dataArray = new Uint8Array(analyser.frequencyBinCount)
-  return {
-    analyser,
-    dataArray,
-    cleanup: () => { try { ctx.close() } catch { /* silent */ } },
-  }
-}
-
 // ── Provider ──────────────────────────────────────────────────────────────────
 export function VoiceProvider({ children }: { children: ReactNode }) {
   const [listening, setListening] = useState(false)
@@ -51,8 +31,6 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const [frequencyData, setFrequencyData] = useState<Uint8Array | null>(null)
 
   const recognitionRef = useRef<any>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const analyserRef = useRef<{ analyser: AnalyserNode; dataArray: Uint8Array; cleanup: () => void } | null>(null)
   const animFrameRef = useRef<number | null>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
@@ -60,19 +38,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
-      analyserRef.current?.cleanup()
       window.speechSynthesis.cancel()
     }
-  }, [])
-
-  const startFrequencyTracking = useCallback(() => {
-    const tick = () => {
-      if (!analyserRef.current) return
-      analyserRef.current.analyser.getByteFrequencyData(analyserRef.current.dataArray)
-      setFrequencyData(new Uint8Array(analyserRef.current.dataArray))
-      animFrameRef.current = requestAnimationFrame(tick)
-    }
-    tick()
   }, [])
 
   const stopFrequencyTracking = useCallback(() => {
@@ -80,8 +47,6 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       cancelAnimationFrame(animFrameRef.current)
       animFrameRef.current = null
     }
-    analyserRef.current?.cleanup()
-    analyserRef.current = null
     setFrequencyData(null)
   }, [])
 
@@ -141,21 +106,11 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     utterance.rate = 0.95
     utterance.pitch = 1.0
 
-    utterance.onstart = () => setSpeaking(true)
-    utterance.onend = () => {
-      setSpeaking(false)
-      stopFrequencyTracking()
-    }
-    utterance.onerror = () => {
-      setSpeaking(false)
-      stopFrequencyTracking()
-    }
-
-    // Simulate frequency data for visual reactivity during speech
-    // (Web Speech API doesn't expose audio nodes directly)
-    let simFrame: ReturnType<typeof setTimeout> | null = null
+    let simFrame: any = null
     utterance.onstart = () => {
       setSpeaking(true)
+      // Simulate frequency data for visual reactivity during speech
+      // (Web Speech API doesn't expose audio nodes directly)
       const sim = () => {
         const arr = new Uint8Array(32)
         for (let i = 0; i < arr.length; i++) {
@@ -169,12 +124,12 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     utterance.onend = () => {
       setSpeaking(false)
       if (simFrame) clearTimeout(simFrame)
-      setFrequencyData(null)
+      stopFrequencyTracking()
     }
     utterance.onerror = () => {
       setSpeaking(false)
       if (simFrame) clearTimeout(simFrame)
-      setFrequencyData(null)
+      stopFrequencyTracking()
     }
 
     window.speechSynthesis.speak(utterance)
