@@ -6,7 +6,6 @@ import {
 } from 'lucide-react'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { indexWorkspaceFile } from '../lib/memory'
-// @ts-ignore — react-live types may be external
 import { LiveProvider, LivePreview, LiveError } from 'react-live'
 
 // ── Sandbox srcdoc helper ────────────────────────────────────────────────────
