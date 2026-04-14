@@ -44,7 +44,7 @@ html, body, #root {
   user-select: none;
 }
 
-input, textarea {
+input, textarea, .md-content, .user-bubble, pre, code {
   -webkit-user-select: text;
   user-select: text;
 }

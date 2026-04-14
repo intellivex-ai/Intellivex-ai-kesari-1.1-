@@ -1235,7 +1235,7 @@ function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSetti
         </div>
         <div className="sidebar-footer">
           {installable && (
-            <button className="sidebar-footer-btn install-btn" onClick={onInstall}>
+            <button className="sidebar-footer-btn install-btn" onClick={() => onInstall?.()}>
               <Download size={14} /> Install App
             </button>
           )}
@@ -1288,10 +1288,10 @@ export default function App() {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setIsInstallable(false);
-      setDeferredPrompt(null);
-    }
+    console.log('[PWA] User response to install prompt:', outcome);
+    // Always clear state after a prompt attempt
+    setIsInstallable(false);
+    setDeferredPrompt(null);
   };
 
   // Track whether user is at bottom
