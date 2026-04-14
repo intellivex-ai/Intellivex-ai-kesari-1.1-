@@ -6,6 +6,7 @@
  *   • Supabase → raw REST API (PostgREST) via fetch()
  *   • Clerk JWT → decoded without verification (dev-only, acceptable)
  *   • OpenRouter → direct fetch() streaming
+ *   • Hugging Face → multi-model cascade with fallback
  *
  * Production: Vercel api/*.ts functions take over with full SDK + JWT verification.
  */
@@ -33,8 +34,8 @@ import { parse as parseUrl } from 'url'
   }
 })()
 
-// ── Kesari 1.1 system prompt ───────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are Kesari 1.1, an AI assistant made by Intellivex AI.
+// ── Kesari 1.2 system prompt ───────────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are Kesari 1.2, an AI assistant made by Intellivex AI.
 
 Keep responses short and conversational unless the user asks for something detailed.
 Do NOT use headers or excessive bullet points for simple questions — just answer naturally.
@@ -57,6 +58,23 @@ function checkRateLimit(userId: string): { ok: boolean; remaining: number } {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+async function performWebSearch(query: string): Promise<string> {
+  try {
+    const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+      }
+    })
+    if (!res.ok) return ''
+    const html = await res.text()
+    const snippets = [...html.matchAll(/class="result__snippet[^>]*>(.*?)<\/a>/gi)]
+    if (!snippets.length) return ''
+    return snippets.slice(0, 3).map(m => m[1].replace(/<\/?b>/g, '')).join('\n\n')
+  } catch {
+    return ''
+  }
+}
+
 function parseBody(req: any): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
     let raw = ''
@@ -121,6 +139,58 @@ async function sbFetch(method: string, table: string, qs = '', body?: unknown) {
   } catch (e) { console.warn('[supabase] fetch error:', e); return null }
 }
 
+// ── Hugging Face model cascade ─────────────────────────────────────────────────
+// HF migrated serverless inference to router.huggingface.co in 2025.
+// Old api-inference.huggingface.co returns 410 for ALL models.
+// Models tried in order; first successful 200 image response wins.
+const HF_MODELS = [
+  {
+    url: 'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
+    params: { num_inference_steps: 4, guidance_scale: 0.0 },
+  },
+  {
+    url: 'https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-2-1',
+    params: { num_inference_steps: 25, guidance_scale: 7.5 },
+  },
+  {
+    url: 'https://router.huggingface.co/hf-inference/models/runwayml/stable-diffusion-v1-5',
+    params: { num_inference_steps: 20, guidance_scale: 7.5 },
+  },
+  {
+    url: 'https://router.huggingface.co/hf-inference/models/Lykon/dreamshaper-7',
+    params: { num_inference_steps: 20, guidance_scale: 7.5 },
+  },
+]
+
+async function callHfModel(
+  hfKey: string,
+  prompt: string,
+  modelUrl: string,
+  params: Record<string, number>,
+): Promise<Response | null> {
+  const ctrl = new AbortController()
+  const tid = setTimeout(() => ctrl.abort(), 50_000)
+  try {
+    const r = await fetch(modelUrl, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${hfKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputs: prompt, parameters: params }),
+      signal: ctrl.signal,
+    })
+    clearTimeout(tid)
+    return r
+  } catch (e: any) {
+    clearTimeout(tid)
+    const name = (e as Error)?.name ?? ''
+    if (name === 'AbortError') {
+      console.warn(`[generate-image] ${modelUrl} timed out (50s)`)
+    } else {
+      console.warn(`[generate-image] ${modelUrl} network error:`, (e as Error)?.message)
+    }
+    return null
+  }
+}
+
 // ── Plugin ─────────────────────────────────────────────────────────────────────
 export function intellivexApiPlugin(): Plugin {
   return {
@@ -143,13 +213,17 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/chat' && req.method === 'POST') {
             const body = await parseBody(req)
             const chatId = body.chatId as string
-            const messages = (body.messages as Array<{ role: string; content: string }>) ?? []
-            const model = (body.model as string) || DEFAULT_MODEL
+            const rawMessages = (body.messages as Array<any>) ?? []
+            let model = (body.model as string) || DEFAULT_MODEL
             const customPrompt = (body.systemPrompt as string) || ''
-            const activePrompt = customPrompt.trim() || SYSTEM_PROMPT
-
-            // Keep last 20 messages to control context window
-            const trimmedMessages = messages.slice(-20)
+            let activePrompt = customPrompt.trim() || SYSTEM_PROMPT
+            
+            // Aggressively truncate system prompt if it's too large for the free tier
+            if (activePrompt.length > 12000) {
+              activePrompt = activePrompt.slice(0, 12000) + "\n... (System prompt truncated for token limits)"
+            }
+            
+            const webSearch = body.webSearch === true
 
             // Rate limiting
             const limit = checkRateLimit(userId)
@@ -159,6 +233,41 @@ export function intellivexApiPlugin(): Plugin {
             if (!orKey || orKey.includes('REPLACE_ME') || orKey.length < 20) {
               console.error('\n  ❌ [intellivex] OPENROUTER_API_KEY not set in .env.local\n')
               return sendJson(res, 500, { error: 'OPENROUTER_API_KEY not configured' })
+            }
+
+            // Web Grounding feature
+            if (webSearch && rawMessages.length > 0) {
+              const lastUserMsg = rawMessages[rawMessages.length - 1]
+              if (lastUserMsg.role === 'user' && typeof lastUserMsg.content === 'string') {
+                const searchResults = await performWebSearch(lastUserMsg.content)
+                if (searchResults) {
+                  activePrompt += `\n\n[LIVE WEB CONTEXT]\nThe following is live search information. Use it to answer if relevant:\n${searchResults}`
+                }
+              }
+            }
+
+            // Keep last 20 messages to control context window, format for Vision if needed
+            // Keep last 3 messages to control context window extremely heavily for free tier
+            let hasVision = false
+            const trimmedMessages = rawMessages.slice(-3).map(msg => {
+              let trimmedContent = msg.content
+              if (typeof trimmedContent === 'string' && trimmedContent.length > 1000) {
+                 trimmedContent = trimmedContent.slice(0, 1000) + '... (truncated)'
+              }
+              if (msg.attachments && msg.attachments.length > 0) {
+                hasVision = true
+                const contentArr: any[] = [{ type: 'text', text: trimmedContent }]
+                msg.attachments.forEach((url: string) => {
+                  contentArr.push({ type: 'image_url', image_url: { url } })
+                })
+                return { role: msg.role, content: contentArr }
+              }
+              return { role: msg.role, content: trimmedContent }
+            })
+
+            // Auto-fallback to gemini-1.5-pro if vision is required (Nemotron doesn't support Vision)
+            if (hasVision && model === 'nvidia/llama-3.1-nemotron-70b-instruct') {
+              model = 'google/gemini-1.5-pro'
             }
 
             const apiMessages = [{ role: 'system', content: activePrompt }, ...trimmedMessages]
@@ -176,7 +285,7 @@ export function intellivexApiPlugin(): Plugin {
                 body: JSON.stringify({
                   model,
                   messages: apiMessages,
-                  max_tokens: 2048,
+                  max_tokens: 800,
                   temperature: 0.4,
                   top_p: 0.9,
                   stream: true,
@@ -282,6 +391,183 @@ export function intellivexApiPlugin(): Plugin {
             const data = await sbFetch('POST', 'messages', 'select=*', body)
             const msg = Array.isArray(data) ? data[0] : data
             return sendJson(res, 201, msg ?? { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
+          }
+
+          // ══ POST /api/generate-image ═════════════════════════════════════════
+          if (pathname === '/api/generate-image' && req.method === 'POST') {
+            const body = await parseBody(req)
+            const { prompt, style, chatId } = body as { prompt: string; style?: string; chatId: string }
+
+            if (!prompt?.trim() || !chatId) {
+              return sendJson(res, 400, { error: 'Missing prompt or chatId' })
+            }
+
+            // ── Validate HF API key ─────────────────────────────────────────
+            const hfKey = (process.env.HF_API_KEY ?? '').trim()
+            if (!hfKey || hfKey.length < 8 || !hfKey.startsWith('hf_')) {
+              return sendJson(res, 500, {
+                error: 'HF_API_KEY not set. Open .env.local and add:\nHF_API_KEY=hf_your_token\n\nGet a free token at: https://huggingface.co/settings/tokens',
+                code: 'NO_HF_KEY',
+              })
+            }
+
+            // ── Daily usage check ───────────────────────────────────────────
+            const DAILY_LIMIT = 10
+            const today = new Date().toISOString().slice(0, 10)
+            let currentCount = 0
+
+            if (isSupabaseReady()) {
+              const usageData = await sbFetch(
+                'GET', 'image_usage',
+                `user_id=eq.${encodeURIComponent(userId)}&date=eq.${today}&select=count`,
+              ) as any
+              currentCount = (Array.isArray(usageData) ? usageData[0]?.count : usageData?.count) ?? 0
+              if (currentCount >= DAILY_LIMIT) {
+                return sendJson(res, 429, {
+                  error: `Daily image limit reached (${DAILY_LIMIT}/day). Try again tomorrow!`,
+                  code: 'DAILY_LIMIT_EXCEEDED',
+                  used: currentCount,
+                  limit: DAILY_LIMIT,
+                })
+              }
+            }
+
+            // ── Build enhanced prompt ───────────────────────────────────────
+            const STYLE_SUFFIX: Record<string, string> = {
+              realistic: ', ultra realistic, 8k, RAW photo, photorealistic, depth of field, sharp focus',
+              anime: ', anime style, vibrant colors, highly detailed anime art, studio ghibli quality',
+              cinematic: ', cinematic film still, dramatic lighting, anamorphic lens, movie scene, 4k',
+              'digital art': ', digital illustration, concept art, artstation trending, octane render, 4k',
+            }
+            const styleSuffix = style ? (STYLE_SUFFIX[style] ?? '') : ', realistic, 8k resolution, sharp focus'
+            const enhancedPrompt = `${prompt.trim()}, high quality, detailed${styleSuffix}`
+
+            // ── Try HF models in cascade ────────────────────────────────────
+            let hfRes: Response | null = null
+            let lastStatus = 0
+
+            for (const model of HF_MODELS) {
+              const shortName = model.url.split('/').slice(-2).join('/')
+              console.log(`[generate-image] Trying ${shortName}`)
+              const r = await callHfModel(hfKey, enhancedPrompt, model.url, model.params)
+
+              if (!r) continue // timeout or network error — try next
+
+              lastStatus = r.status
+
+              if (r.status === 503) {
+                console.warn(`[generate-image] ${shortName} → 503 (warming up), trying next`)
+                continue
+              }
+              if (r.status === 410 || r.status === 404) {
+                console.warn(`[generate-image] ${shortName} → ${r.status} (model gone), trying next`)
+                continue
+              }
+              if (r.status === 401 || r.status === 403) {
+                const errBody = await r.text().catch(() => '')
+                console.error('[generate-image] Auth error:', r.status, errBody)
+                return sendJson(res, 401, {
+                  error: `HF_API_KEY is invalid or expired (${r.status}).\nGet a new token at: https://huggingface.co/settings/tokens`,
+                  code: 'INVALID_HF_KEY',
+                })
+              }
+              if (!r.ok) {
+                const errBody = await r.text().catch(() => '')
+                console.warn(`[generate-image] ${shortName} → ${r.status}:`, errBody.slice(0, 100))
+                continue
+              }
+
+              // ✅ Success
+              hfRes = r
+              break
+            }
+
+            if (!hfRes) {
+              return sendJson(res, 503, {
+                error: lastStatus === 503
+                  ? 'Image models are warming up. Wait ~60 seconds and try again.'
+                  : 'Image generation unavailable right now. All models are offline — try again later.',
+                code: 'ALL_MODELS_FAILED',
+              })
+            }
+
+            // ── Validate response is an image ───────────────────────────────
+            const contentType = hfRes.headers.get('content-type') ?? ''
+            if (!contentType.startsWith('image/')) {
+              const text = await hfRes.text().catch(() => '')
+              console.error('[generate-image] Non-image response:', text.slice(0, 300))
+              return sendJson(res, 502, { error: 'Unexpected response from image model' })
+            }
+
+            const arrayBuffer = await hfRes.arrayBuffer()
+            const buffer = Buffer.from(arrayBuffer)
+
+            // ── Upload to Supabase Storage (optional) ───────────────────────
+            let imageUrl = ''
+
+            if (isSupabaseReady()) {
+              const supabaseUrl = (process.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '')
+              const storageKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+              const storagePath = `${userId}/${Date.now()}.png`
+
+              try {
+                const uploadRes = await fetch(
+                  `${supabaseUrl}/storage/v1/object/generated-images/${storagePath}`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      apikey: storageKey,
+                      Authorization: `Bearer ${storageKey}`,
+                      'Content-Type': 'image/png',
+                    },
+                    body: buffer,
+                  },
+                )
+
+                if (uploadRes.ok) {
+                  imageUrl = `${supabaseUrl}/storage/v1/object/public/generated-images/${storagePath}`
+
+                  // Persist image message to DB
+                  await sbFetch('POST', 'messages', '', {
+                    chat_id: chatId,
+                    role: 'assistant',
+                    type: 'image',
+                    content: prompt.trim(),
+                    image_url: imageUrl,
+                    prompt: enhancedPrompt,
+                  })
+
+                  // Upsert usage counter
+                  await fetch(`${supabaseUrl}/rest/v1/image_usage`, {
+                    method: 'POST',
+                    headers: {
+                      apikey: storageKey,
+                      Authorization: `Bearer ${storageKey}`,
+                      'Content-Type': 'application/json',
+                      Prefer: 'resolution=merge-duplicates',
+                    },
+                    body: JSON.stringify({ user_id: userId, date: today, count: currentCount + 1 }),
+                  })
+                } else {
+                  console.warn('[generate-image] Storage upload failed:', await uploadRes.text())
+                }
+              } catch (storageErr) {
+                console.warn('[generate-image] Storage error (using base64 fallback):', storageErr)
+              }
+            }
+
+            // ── Fallback: return base64 data-URL ────────────────────────────
+            if (!imageUrl) {
+              imageUrl = `data:image/png;base64,${buffer.toString('base64')}`
+            }
+
+            return sendJson(res, 200, {
+              url: imageUrl,
+              enhancedPrompt,
+              fromCache: false,
+              used: currentCount + 1,
+              limit: DAILY_LIMIT,
+            })
           }
 
           next()

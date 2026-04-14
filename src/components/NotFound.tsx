@@ -81,7 +81,7 @@ export default function NotFound() {
           transition={{ delay: 0.55 }}
         >
           <MessageSquare size={12} />
-          Intellivex AI · Kesari 1.1
+          Intellivex AI · Kesari 1.2
         </motion.p>
       </div>
     </div>

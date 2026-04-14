@@ -13,6 +13,19 @@ export interface Message {
   role: 'user' | 'assistant' | 'system'
   content: string
   created_at: string
+  // Image generation fields
+  type?: 'text' | 'image'
+  image_url?: string | null
+  prompt?: string | null
+  attachments?: string[]
+}
+
+export interface GenerateImageResult {
+  url: string
+  enhancedPrompt: string
+  fromCache: boolean
+  used: number
+  limit: number
 }
 
 // ── Token helper ──────────────────────────────────────────────────────────────
@@ -72,23 +85,43 @@ export async function fetchMessages(chatId: string): Promise<Message[]> {
   return res.json()
 }
 
-export async function postMessage(chatId: string, role: Message['role'], content: string): Promise<Message> {
+export async function postMessage(chatId: string, role: Message['role'], content: string, attachments?: string[]): Promise<Message> {
   const headers = await authHeaders()
   const res = await fetch('/api/messages', {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, role, content }),
+    body: JSON.stringify({ chat_id: chatId, role, content, attachments }),
   })
   if (!res.ok) throw new Error(`postMessage failed: ${res.status}`)
+  return res.json()
+}
+
+// ── Image Generation ──────────────────────────────────────────────────────────
+export async function generateImage(
+  chatId: string,
+  prompt: string,
+  style?: string,
+): Promise<GenerateImageResult> {
+  const headers = await authHeaders()
+  const res = await fetch('/api/generate-image', {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chatId, prompt, style }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `generate-image failed: ${res.status}` }))
+    throw new Error(err.error ?? `generate-image failed: ${res.status}`)
+  }
   return res.json()
 }
 
 // ── Streaming Chat ───────────────────────────────────────────────────────────
 export interface StreamChatOptions {
   chatId: string
-  messages: Array<{ role: string; content: string }>
+  messages: Array<any>
   model?: string
   systemPrompt?: string
+  webSearch?: boolean
   signal?: AbortSignal
   onToken: (token: string) => void
   onDone: (fullContent: string) => void
@@ -100,6 +133,7 @@ export async function streamChat({
   messages,
   model,
   systemPrompt,
+  webSearch,
   signal,
   onToken,
   onDone,
@@ -112,7 +146,7 @@ export async function streamChat({
     response = await fetch('/api/chat', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chatId, messages, model, systemPrompt }),
+      body: JSON.stringify({ chatId, messages, model, systemPrompt, webSearch }),
       signal,
     })
   } catch (err) {

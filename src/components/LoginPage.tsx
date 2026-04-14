@@ -20,7 +20,7 @@ export default function LoginPage() {
           </div>
           <div>
             <h1 className="auth-brand-name">Intellivex AI</h1>
-            <p className="auth-brand-tag">Powered by Kesari 1.1</p>
+            <p className="auth-brand-tag">Powered by Kesari 1.2</p>
           </div>
         </div>
 

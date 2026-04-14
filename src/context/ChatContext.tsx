@@ -8,7 +8,19 @@ import {
   fetchMessages,
   postMessage,
   streamChat,
+  generateImage as apiGenerateImage,
 } from '../lib/api'
+import skillsPrompt from '../../skills.md?raw'
+import { AGENTS, parseAgentMention } from '../lib/agents'
+import type { AgentId } from '../lib/agents'
+
+// ── Image intent detection ────────────────────────────────────────────────────
+const IMAGE_INTENT_RE =
+  /\b(generate|create|draw|make|render|imagine|show\s+me|design|paint|sketch|depict|visualize|illustrate)\b.{0,70}\b(image|photo|picture|art|artwork|illustration|portrait|wallpaper|logo|scene|landscape)\b|\b(image|photo|picture|art)\s+of\b|^(draw|paint|sketch)\s+(a\s+|an\s+|the\s+)?[a-z]/im
+
+export function isImageRequest(text: string): boolean {
+  return IMAGE_INTENT_RE.test(text.trim())
+}
 
 // ── UI-layer types ────────────────────────────────────────────────────────────
 export interface UIMessage {
@@ -20,6 +32,14 @@ export interface UIMessage {
   streaming?: boolean
   error?: boolean
   reaction?: 'up' | 'down' | null
+  agentId?: AgentId
+  // Image fields
+  type?: 'text' | 'image'
+  image_url?: string | null
+  prompt?: string | null
+  image_style?: string
+  image_generating?: boolean
+  attachments?: string[]
 }
 
 export interface UIChat {
@@ -38,6 +58,7 @@ interface State {
   loading: boolean
   msgLoading: boolean
   streaming: boolean
+  imageUsage: { used: number; limit: number }
 }
 
 const initialState: State = {
@@ -47,6 +68,7 @@ const initialState: State = {
   loading: false,
   msgLoading: false,
   streaming: false,
+  imageUsage: { used: 0, limit: 5 },
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
@@ -65,6 +87,9 @@ type Action =
   | { type: 'FINALIZE_MSG'; payload: { id: string; content: string } }
   | { type: 'ERROR_MSG'; payload: string }
   | { type: 'REACT_MSG'; payload: { id: string; reaction: 'up' | 'down' | null } }
+  | { type: 'SET_IMG_URL'; payload: { id: string; url: string; enhancedPrompt: string } }
+  | { type: 'IMG_GEN_ERROR'; payload: { id: string; message: string } }
+  | { type: 'SET_IMAGE_USAGE'; payload: { used: number; limit: number } }
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -92,13 +117,33 @@ function reducer(state: State, action: Action): State {
       return { ...state, messages: state.messages.map(m => m.id === action.payload ? { ...m, streaming: false, error: true } : m) }
     case 'REACT_MSG':
       return { ...state, messages: state.messages.map(m => m.id === action.payload.id ? { ...m, reaction: action.payload.reaction } : m) }
+    case 'SET_IMG_URL':
+      return {
+        ...state,
+        messages: state.messages.map(m =>
+          m.id === action.payload.id
+            ? { ...m, image_url: action.payload.url, prompt: action.payload.enhancedPrompt, image_generating: false }
+            : m
+        ),
+      }
+    case 'IMG_GEN_ERROR':
+      return {
+        ...state,
+        messages: state.messages.map(m =>
+          m.id === action.payload.id
+            ? { ...m, image_generating: false, error: true, content: action.payload.message }
+            : m
+        ),
+      }
+    case 'SET_IMAGE_USAGE':
+      return { ...state, imageUsage: action.payload }
     default: return state
   }
 }
 
 // ── Available models ──────────────────────────────────────────────────────────
 export const AVAILABLE_MODELS = [
-  { id: 'nvidia/llama-3.1-nemotron-70b-instruct', label: 'Kesari 1.1', provider: 'INTELLIVEX AI' },
+  { id: 'nvidia/llama-3.1-nemotron-70b-instruct', label: 'Kesari 1.2', provider: 'INTELLIVEX AI' },
 ]
 const DEFAULT_MODEL = AVAILABLE_MODELS[0].id
 
@@ -109,15 +154,22 @@ interface ChatContextValue {
   setSelectedModel: (m: string) => void
   systemPrompt: string
   setSystemPrompt: (p: string) => void
+  webSearchEnabled: boolean
+  setWebSearchEnabled: (enabled: boolean) => void
+  activeAgentId: AgentId
+  setActiveAgentId: (id: AgentId) => void
   loadChats: () => Promise<void>
   selectChat: (id: string) => Promise<void>
   newChat: () => void
-  sendMessage: (text: string) => Promise<void>
+  sendMessage: (text: string, style?: string, attachments?: string[]) => Promise<void>
+  generateImage: (prompt: string, style?: string) => Promise<void>
   stopStreaming: () => void
   regenerate: () => Promise<void>
+  regenerateImage: (prompt: string, style?: string, messageId?: string) => Promise<void>
   deleteChat: (id: string) => Promise<void>
   renameChat: (id: string, title: string) => Promise<void>
   reactToMessage: (id: string, reaction: 'up' | 'down' | null) => void
+  branchChat: (messageId: string, newContent: string) => Promise<void>
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null)
@@ -148,12 +200,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   // System prompt (persisted)
   const [systemPrompt, setSystemPromptState] = useState<string>(
-    () => localStorage.getItem('kesari-system-prompt') ?? ''
+    () => localStorage.getItem('kesari-system-prompt') || skillsPrompt
   )
   const setSystemPrompt = useCallback((p: string) => {
     localStorage.setItem('kesari-system-prompt', p)
     setSystemPromptState(p)
   }, [])
+
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false)
+  const [activeAgentId, setActiveAgentId] = useState<AgentId>('kesari')
 
   const loadChats = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true })
@@ -200,11 +255,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'REACT_MSG', payload: { id, reaction } })
   }, [])
 
-  const sendMessage = useCallback(async (text: string) => {
+  // ── Image Generation Pipeline ─────────────────────────────────────────────
+  const generateImage = useCallback(async (prompt: string, style?: string) => {
     let chatId = stateRef.current.activeId
 
     if (!chatId) {
-      const title = text.length > 60 ? text.slice(0, 60) + '…' : text
+      const title = prompt.length > 60 ? prompt.slice(0, 60) + '…' : prompt
       try {
         const chat = await createChat(title)
         chatId = chat.id
@@ -217,7 +273,124 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } else {
       const activeChat = stateRef.current.chats.find(c => c.id === chatId)
       if (activeChat?.title === 'New chat' || stateRef.current.messages.length === 0) {
-        const title = text.length > 60 ? text.slice(0, 60) + '…' : text
+        const title = prompt.length > 60 ? prompt.slice(0, 60) + '…' : prompt
+        try {
+          await apiRenameChat(chatId, title)
+          dispatch({ type: 'UPDATE_CHAT_TITLE', payload: { id: chatId, title } })
+        } catch { /* non-critical */ }
+      }
+    }
+
+    const currentChatId = chatId
+
+    // Add user message to UI + DB
+    const tempUserId = `temp-user-${Date.now()}`
+    dispatch({
+      type: 'ADD_MESSAGE',
+      payload: { id: tempUserId, chat_id: currentChatId, role: 'user', content: prompt, created_at: new Date().toISOString(), type: 'text' },
+    })
+    postMessage(currentChatId, 'user', prompt).catch(err => console.error('postMessage(user) error', err))
+
+    // Add image placeholder
+    const tempImgId = `temp-img-${Date.now()}`
+    dispatch({
+      type: 'ADD_MESSAGE',
+      payload: {
+        id: tempImgId,
+        chat_id: currentChatId,
+        role: 'assistant',
+        content: prompt,
+        created_at: new Date().toISOString(),
+        type: 'image',
+        image_generating: true,
+        prompt,
+        image_style: style,
+      },
+    })
+
+    try {
+      const result = await apiGenerateImage(currentChatId, prompt, style)
+
+      dispatch({
+        type: 'SET_IMG_URL',
+        payload: { id: tempImgId, url: result.url, enhancedPrompt: result.enhancedPrompt },
+      })
+      dispatch({
+        type: 'SET_IMAGE_USAGE',
+        payload: { used: result.used, limit: result.limit },
+      })
+
+      // Reload messages from DB to get the persisted image message ID
+      setTimeout(async () => {
+        try {
+          const msgs = await fetchMessages(currentChatId)
+          if (msgs.length > 0) dispatch({ type: 'SET_MESSAGES', payload: msgs as UIMessage[] })
+        } catch { /* silent */ }
+      }, 600)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Image generation failed'
+      dispatch({ type: 'IMG_GEN_ERROR', payload: { id: tempImgId, message } })
+    }
+  }, [])
+
+  // ── Regenerate image (same prompt, new variation) ─────────────────────────
+  const regenerateImage = useCallback(async (prompt: string, style?: string, messageId?: string) => {
+    // Replace the old image message with a fresh generating placeholder
+    if (messageId) {
+      dispatch({
+        type: 'SET_IMG_URL',
+        // temporarily clear image_url to trigger skeleton
+        payload: { id: messageId, url: '', enhancedPrompt: prompt },
+      })
+      // set generating=true
+      dispatch({
+        type: 'ADD_MESSAGE',
+        payload: {
+          id: `regen-${Date.now()}`,
+          chat_id: stateRef.current.activeId ?? '',
+          role: 'assistant',
+          content: prompt,
+          created_at: new Date().toISOString(),
+          type: 'image',
+          image_generating: true,
+          prompt,
+          image_style: style,
+        },
+      })
+    }
+    await generateImage(prompt, style)
+  }, [generateImage])
+
+  const sendMessage = useCallback(async (text: string, style?: string, attachments?: string[]) => {
+    // Parse @Agent mentions (e.g. "@coder write a React hook")
+    const { agentId: mentionedAgent, cleanText } = parseAgentMention(text)
+    const resolvedAgentId = mentionedAgent ?? activeAgentId
+    const resolvedAgent = AGENTS[resolvedAgentId]
+    const finalText = cleanText
+
+    // Route to image pipeline if intent detected
+    if (isImageRequest(finalText) && (!attachments || attachments.length === 0)) {
+      await generateImage(finalText, style)
+      return
+    }
+
+    let chatId = stateRef.current.activeId
+
+    if (!chatId) {
+      const title = finalText.length > 60 ? finalText.slice(0, 60) + '…' : finalText
+      try {
+        const chat = await createChat(title)
+        chatId = chat.id
+        dispatch({ type: 'ADD_CHAT', payload: chat as UIChat })
+        dispatch({ type: 'SET_ACTIVE', payload: chatId })
+      } catch (err) {
+        console.error('createChat error', err)
+        return
+      }
+    } else {
+      const activeChat = stateRef.current.chats.find(c => c.id === chatId)
+      if (activeChat?.title === 'New chat' || stateRef.current.messages.length === 0) {
+        const title = finalText.length > 60 ? finalText.slice(0, 60) + '…' : finalText
         try {
           await apiRenameChat(chatId, title)
           dispatch({ type: 'UPDATE_CHAT_TITLE', payload: { id: chatId, title } })
@@ -226,27 +399,33 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
 
     const tempUserId = `temp-user-${Date.now()}`
-    dispatch({ type: 'ADD_MESSAGE', payload: { id: tempUserId, chat_id: chatId, role: 'user', content: text, created_at: new Date().toISOString() } })
+    dispatch({ type: 'ADD_MESSAGE', payload: { id: tempUserId, chat_id: chatId, role: 'user', content: text, created_at: new Date().toISOString(), attachments } })
 
     const tempAiId = `temp-ai-${Date.now()}`
-    dispatch({ type: 'ADD_MESSAGE', payload: { id: tempAiId, chat_id: chatId, role: 'assistant', content: '', created_at: new Date().toISOString(), streaming: true } })
+    dispatch({ type: 'ADD_MESSAGE', payload: { id: tempAiId, chat_id: chatId, role: 'assistant', content: '', created_at: new Date().toISOString(), streaming: true, agentId: resolvedAgentId } })
     dispatch({ type: 'SET_STREAMING', payload: true })
 
     // Build context: all non-streaming messages + new user message
     const contextMessages = stateRef.current.messages
-      .filter(m => !m.streaming && !m.error)
-      .map(m => ({ role: m.role, content: m.content }))
-    contextMessages.push({ role: 'user', content: text })
+      .filter(m => !m.streaming && !m.error && m.type !== 'image')
+      .map(m => ({ role: m.role, content: m.content, attachments: m.attachments }))
+    contextMessages.push({ role: 'user', content: finalText, attachments })
 
     const currentChatId = chatId
 
-    postMessage(currentChatId, 'user', text).catch(err => console.error('postMessage(user) error', err))
+    postMessage(currentChatId, 'user', text, attachments).catch(err => console.error('postMessage(user) error', err))
 
     const controller = new AbortController()
     abortRef.current = controller
 
+    // Build effective system prompt: base + agent overlay
+    const basePrompt = localStorage.getItem('kesari-system-prompt') || skillsPrompt
+    const effectivePrompt = resolvedAgent.systemPromptOverlay
+      ? `${basePrompt}\n\n${resolvedAgent.systemPromptOverlay}`
+      : basePrompt
+
     // ── Word-by-word smooth streaming (throttled at ~60fps) ──────────────────
-    let accumulated = ''         // running total for this generation
+    let accumulated = ''
     let pendingFlush: ReturnType<typeof setTimeout> | null = null
 
     const flushToUI = () => {
@@ -258,24 +437,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       chatId: currentChatId,
       messages: contextMessages,
       model: localStorage.getItem('kesari-model') ?? DEFAULT_MODEL,
-      systemPrompt: stateRef.current.streaming ? undefined : (localStorage.getItem('kesari-system-prompt') ?? undefined),
+      systemPrompt: stateRef.current.streaming ? undefined : effectivePrompt,
+      webSearch: stateRef.current.activeId ? webSearchEnabled : undefined,
       signal: controller.signal,
 
       onToken: (token) => {
         accumulated += token
         if (!pendingFlush) {
-          // Batch token updates to ~60fps for smooth word-by-word effect
           pendingFlush = setTimeout(flushToUI, 16)
         }
       },
 
       onDone: async (fullContent) => {
-        // Flush any remaining buffered tokens
         if (pendingFlush) { clearTimeout(pendingFlush); pendingFlush = null }
         abortRef.current = null
         dispatch({ type: 'FINALIZE_MSG', payload: { id: tempAiId, content: fullContent || accumulated } })
         dispatch({ type: 'SET_STREAMING', payload: false })
-        // Guard-gated DB reload: don't overwrite if user started a new message
         setTimeout(async () => {
           if (stateRef.current.streaming) return
           try {
@@ -296,7 +473,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_STREAMING', payload: false })
       },
     })
-  }, [])
+  }, [generateImage, activeAgentId, webSearchEnabled])
+
 
   const regenerate = useCallback(async () => {
     const { messages, activeId } = stateRef.current
@@ -324,16 +502,53 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error('renameChat error', err)
     }
-  }, [])
+  }, [generateImage])
+
+  // ── Branch Chat ─────────────────────────────────────────────────────────────
+  const branchChat = useCallback(async (messageId: string, newContent: string) => {
+    const activeId = stateRef.current.activeId
+    if (!activeId) return
+    const msgs = stateRef.current.messages
+    const idx = msgs.findIndex(m => m.id === messageId)
+    if (idx === -1) return
+
+    // Keep all messages *before* the edited one
+    const preserved = msgs.slice(0, idx)
+    dispatch({ type: 'SET_MESSAGES', payload: preserved })
+    
+    // We ideally should delete subsequent messages from backend, but for speed,
+    // we'll just not show them. Sending this new sequence creates a fork logically,
+    // though the DB might still hold the old ones without a proper "delete cascading" API.
+    // For now, we just visually prune and re-send.
+    await sendMessage(newContent, undefined, msgs[idx].attachments)
+  }, [sendMessage])
 
   return (
-    <ChatContext.Provider value={{
-      state, selectedModel, setSelectedModel,
-      systemPrompt, setSystemPrompt,
-      loadChats, selectChat, newChat,
-      sendMessage, stopStreaming, regenerate,
-      deleteChat, renameChat, reactToMessage,
-    }}>
+    <ChatContext.Provider
+      value={{
+        state,
+        selectedModel,
+        setSelectedModel,
+        systemPrompt,
+        setSystemPrompt,
+        webSearchEnabled,
+        setWebSearchEnabled,
+        activeAgentId,
+        setActiveAgentId,
+        loadChats,
+        selectChat,
+        newChat,
+        sendMessage,
+        generateImage,
+        stopStreaming,
+        regenerate,
+        regenerateImage,
+        deleteChat,
+        renameChat,
+        reactToMessage,
+        branchChat,
+      }}
+    >
       {children}
     </ChatContext.Provider>
   )

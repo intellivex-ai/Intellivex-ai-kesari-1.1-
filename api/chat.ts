@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from '@clerk/backend'
+import { availableTools } from '../src/lib/tools'
 
 // ── Clients ───────────────────────────────────────────────────────────────────
 const supabase = createClient(
@@ -9,7 +10,7 @@ const supabase = createClient(
 )
 
 // ── System Prompt ─────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are Kesari 1.1, an AI assistant made by Intellivex AI.
+const SYSTEM_PROMPT = `You are Kesari 1.2, an AI assistant made by Intellivex AI.
 
 Keep responses short and conversational unless the user asks for something detailed.
 Do NOT use headers or excessive bullet points for simple questions — just answer naturally.
@@ -18,6 +19,24 @@ Be direct, friendly, and clear. Answer the question first, then explain if neede
 
 // ── OpenRouter model ──────────────────────────────────────────────────────────
 const OPENROUTER_MODEL = 'nvidia/llama-3.1-nemotron-70b-instruct'
+const OPENAI_KEY = process.env.OPENAI_API_KEY || ''
+
+async function embed(text: string): Promise<number[]> {
+  const res = await fetch('https://api.openai.com/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${OPENAI_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'text-embedding-3-small',
+      input: text.slice(0, 8000),
+    }),
+  })
+  if (!res.ok) throw new Error(`Embedding API error: ${res.status}`)
+  const json = await res.json()
+  return json.data[0].embedding
+}
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
 async function getUserId(req: VercelRequest): Promise<string | null> {
@@ -41,15 +60,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await getUserId(req)
   if (!userId) return res.status(401).json({ error: 'Unauthorized' })
 
-  const { chatId, messages: rawMessages, model: modelLabel = OPENROUTER_MODEL, systemPrompt } = req.body as {
+  const { chatId, messages: rawMessages, model: modelLabel = OPENROUTER_MODEL, systemPrompt, webSearch } = req.body as {
     chatId: string
     messages: Array<{ role: string; content: string }>
     model?: string
     systemPrompt?: string
+    webSearch?: boolean
   }
 
-  const messages = (rawMessages ?? []).slice(-20)
-  const activePrompt = systemPrompt?.trim() || SYSTEM_PROMPT
+  // Limit to last 3 messages and truncate lengths to stay under free tier 5k limits
+  let messages = (rawMessages ?? []).slice(-3)
+  
+  // Truncate overly long messages
+  messages = messages.map(m => ({
+    ...m,
+    content: m.content.length > 1000 ? m.content.slice(0, 1000) + '... (truncated)' : m.content
+  }))
+
+  let activePrompt = systemPrompt?.trim() || SYSTEM_PROMPT
+  if (activePrompt.length > 12000) {
+    activePrompt = activePrompt.slice(0, 12000) + "\n... (System prompt truncated)"
+  }
 
   if (!chatId || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'Missing chatId or messages' })
@@ -70,12 +101,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   await supabase.from('users').upsert({ id: userId }, { onConflict: 'id' })
 
 
-  // Build message array: system + conversation history
-  const apiMessages = [
-    { role: 'system', content: activePrompt },
-    ...messages,
-  ]
-
   // Save the last user message to DB (the frontend may have done this too,
   // but this ensures DB consistency if the FE fails)
   const lastMsg = messages[messages.length - 1]
@@ -87,26 +112,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
-  // ── Stream from OpenRouter API ───────────────────────────────────────────
+  // ── Retrieve Memories (RAG) ────────────────────────────────────────────────
+  let contextAddon = ''
+  if (lastMsg?.role === 'user') {
+    try {
+      const queryEmbedding = await embed(lastMsg.content)
+      const { data: memories, error: memErr } = await supabase.rpc('match_memories', {
+        query_embedding: queryEmbedding,
+        match_threshold: 0.72,
+        match_count: 5,
+        filter_user_id: userId,
+      })
+
+      if (!memErr && memories && memories.length > 0) {
+        contextAddon = "\n\n# Relevant Context/Memories:\n" + memories.map((m: any) => `- ${m.content}`).join('\n')
+      }
+    } catch (e) {
+      console.error('Failed to retrieve memories', e)
+    }
+  }
+
+  // Build message array: system + conversation history
+  const apiMessages = [
+    { role: 'system', content: activePrompt + contextAddon },
+    ...messages,
+  ]
+
+  // ── Stream from OpenRouter API or OpenAI API ────────────────────────────
   let nvidiaRes: Response
   try {
-    nvidiaRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://intellivexai.com',
-        'X-Title': 'Intellivex AI',
-      },
-      body: JSON.stringify({
-        model: OPENROUTER_MODEL,
-        messages: apiMessages,
-        max_tokens: 4096,
-        temperature: 0.7,
-        top_p: 0.95,
-        stream: true,
-      }),
-    })
+    if (webSearch) {
+      nvidiaRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPENAI_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: apiMessages,
+          stream: true,
+          tools: availableTools,
+        }),
+      })
+    } else {
+      nvidiaRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://intellivexai.com',
+          'X-Title': 'Intellivex AI',
+        },
+        body: JSON.stringify({
+          model: OPENROUTER_MODEL,
+          messages: apiMessages,
+          max_tokens: 800,
+          temperature: 0.7,
+          top_p: 0.95,
+          stream: true,
+          tools: availableTools,
+        }),
+      })
+    }
   } catch (err) {
     console.error('OpenRouter fetch error', err)
     return res.status(502).json({ error: 'AI service unavailable' })
@@ -127,6 +195,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const reader = nvidiaRes.body!.getReader()
   const decoder = new TextDecoder()
   let fullContent = ''
+  let inToolCall = false
 
   try {
     while (true) {
@@ -134,20 +203,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (done) break
 
       const chunk = decoder.decode(value, { stream: true })
-      // Forward raw SSE chunk to client
-      res.write(chunk)
-
-      // Also accumulate for DB save
+      
       const lines = chunk.split('\n')
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6)
-          if (data === '[DONE]') continue
+          if (data === '[DONE]') {
+            res.write(line + '\n\n')
+            continue
+          }
           try {
             const parsed = JSON.parse(data)
-            const token = parsed.choices?.[0]?.delta?.content ?? ''
-            if (token) fullContent += token
-          } catch { /* skip */ }
+            const delta = parsed.choices?.[0]?.delta
+
+            // Handle native tool calls -> Map to <tool> XML format for our frontend parser
+            if (delta?.tool_calls) {
+              let fakeContent = ''
+              for (const tc of delta.tool_calls) {
+                if (tc.function?.name) {
+                  inToolCall = true
+                  fakeContent += `\n<tool name="${tc.function.name}">\n${tc.function.arguments || ''}`
+                } else if (tc.function?.arguments) {
+                  fakeContent += tc.function.arguments
+                }
+              }
+              if (fakeContent) {
+                fullContent += fakeContent
+                // Send as normal content delta
+                res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: fakeContent } }] })}\n\n`)
+              }
+            } else if (delta?.content) {
+              // Normal text token
+              fullContent += delta.content
+              res.write(line + '\n\n')
+            }
+
+            // Close the tool block when finish_reason is 'tool_calls'
+            if (parsed.choices?.[0]?.finish_reason === 'tool_calls' && inToolCall) {
+              const closeTag = `\n</tool>\n`
+              fullContent += closeTag
+              res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: closeTag } }] })}\n\n`)
+              inToolCall = false
+            }
+          } catch { 
+             // skip malformed chunks or forward raw
+             if (!inToolCall) {
+               res.write(line + '\n\n')
+             }
+          }
         }
       }
     }
