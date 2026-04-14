@@ -23,6 +23,7 @@ import { useWorkspaceStore } from "./stores/workspaceStore";
 import { VisionProvider, useVision } from "./context/VisionContext";
 import { VoiceProvider, useVoice } from "./context/VoiceContext";
 import { AGENTS } from "./lib/agents";
+import { Analytics } from '@vercel/analytics/react';
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Zap, Terminal, Palette, Microscope, Search, Layers
@@ -1523,6 +1524,7 @@ export default function App() {
           </ToastProvider>
         </VoiceProvider>
       </VisionProvider>
+      <Analytics />
     </ErrorBoundary>
   );
 }
