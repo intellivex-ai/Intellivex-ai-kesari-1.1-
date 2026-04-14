@@ -611,7 +611,7 @@ function MessageRow({ msg, onRegenerate, onRegenerateImage, isLast, streaming, o
           ) : msg.error ? (
             <div className="msg-error">
               <AlertCircle size={13} />
-              <span>{isImage ? displayContent : 'Something went wrong. Please try again.'}</span>
+              <span>{displayContent || (isImage ? 'Image generation failed.' : 'Something went wrong. Please try again.')}</span>
               {onRegenerate && (
                 <button className="msg-action" onClick={onRegenerate}><RotateCcw size={11} /> Retry</button>
               )}

@@ -85,7 +85,7 @@ type Action =
   | { type: 'ADD_MESSAGE'; payload: UIMessage }
   | { type: 'UPDATE_MSG_CONTENT'; payload: { id: string; content: string; streaming: boolean } }
   | { type: 'FINALIZE_MSG'; payload: { id: string; content: string } }
-  | { type: 'ERROR_MSG'; payload: string }
+  | { type: 'ERROR_MSG'; payload: { id: string; message?: string } }
   | { type: 'REACT_MSG'; payload: { id: string; reaction: 'up' | 'down' | null } }
   | { type: 'SET_IMG_URL'; payload: { id: string; url: string; enhancedPrompt: string } }
   | { type: 'IMG_GEN_ERROR'; payload: { id: string; message: string } }
@@ -114,7 +114,14 @@ function reducer(state: State, action: Action): State {
     case 'FINALIZE_MSG':
       return { ...state, messages: state.messages.map(m => m.id === action.payload.id ? { ...m, content: action.payload.content, streaming: false, error: false } : m) }
     case 'ERROR_MSG':
-      return { ...state, messages: state.messages.map(m => m.id === action.payload ? { ...m, streaming: false, error: true } : m) }
+      return { 
+        ...state, 
+        messages: state.messages.map(m => 
+          m.id === action.payload.id 
+            ? { ...m, streaming: false, error: true, content: action.payload.message || m.content } 
+            : m
+        ) 
+      }
     case 'REACT_MSG':
       return { ...state, messages: state.messages.map(m => m.id === action.payload.id ? { ...m, reaction: action.payload.reaction } : m) }
     case 'SET_IMG_URL':
@@ -469,7 +476,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         abortRef.current = null
         if (err.name === 'AbortError') return
         console.error('streamChat error', err)
-        dispatch({ type: 'ERROR_MSG', payload: tempAiId })
+        dispatch({ type: 'ERROR_MSG', payload: { id: tempAiId, message: err.message } })
         dispatch({ type: 'SET_STREAMING', payload: false })
       },
     })

@@ -5,12 +5,15 @@ import { verifyToken } from '@clerk/backend'
 // ── Vercel config: extend timeout for HF cold starts ─────────────────────────
 export const config = { maxDuration: 60 }
 
+// ── Environment Helpers ───────────────────────────────────────────────────────
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || ''
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const CLERK_SECRET = process.env.CLERK_SECRET_KEY || ''
+
 // ── Supabase (service role) ───────────────────────────────────────────────────
 function getSupabase() {
-  const url = process.env.VITE_SUPABASE_URL ?? ''
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-  if (!url || !key) return null
-  return createClient(url, key)
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null
+  return createClient(SUPABASE_URL, SUPABASE_KEY)
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -18,12 +21,17 @@ async function getClerkUserId(req: VercelRequest): Promise<string | null> {
   const auth = req.headers.authorization ?? ''
   if (!auth.startsWith('Bearer ')) return null
   const token = auth.slice(7)
+  
+  if (!CLERK_SECRET) {
+    console.error('Missing CLERK_SECRET_KEY')
+    return null
+  }
+
   try {
-    const payload = await verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY ?? '',
-    })
+    const payload = await verifyToken(token, { secretKey: CLERK_SECRET })
     return payload.sub ?? null
-  } catch {
+  } catch (err) {
+    console.error('Identity verification failed (generate-image):', err)
     return null
   }
 }

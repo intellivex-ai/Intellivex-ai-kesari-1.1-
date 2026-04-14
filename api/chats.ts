@@ -2,19 +2,27 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from '@clerk/backend'
 
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-)
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || ''
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const CLERK_SECRET = process.env.CLERK_SECRET_KEY || ''
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 async function getUserId(req: VercelRequest): Promise<string | null> {
   const authHeader = req.headers.authorization
   if (!authHeader?.startsWith('Bearer ')) return null
   const token = authHeader.slice(7)
+
+  if (!CLERK_SECRET) {
+    console.error('Missing CLERK_SECRET_KEY')
+    return null
+  }
+
   try {
-    const payload = await verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY! })
+    const payload = await verifyToken(token, { secretKey: CLERK_SECRET })
     return payload.sub ?? null
-  } catch {
+  } catch (err) {
+    console.error('Identity verification failed:', err)
     return null
   }
 }

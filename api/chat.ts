@@ -3,11 +3,15 @@ import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from '@clerk/backend'
 import { availableTools } from '../src/lib/tools'
 
+// ── Environment Variables ───────────────────────────────────────────────────
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || ''
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
+const CLERK_SECRET = process.env.CLERK_SECRET_KEY || ''
+const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || ''
+const OPENAI_KEY = process.env.OPENAI_API_KEY || ''
+
 // ── Clients ───────────────────────────────────────────────────────────────────
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-)
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 // ── System Prompt ─────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are Kesari 1.2, an AI assistant made by Intellivex AI.
@@ -19,9 +23,9 @@ Be direct, friendly, and clear. Answer the question first, then explain if neede
 
 // ── OpenRouter model ──────────────────────────────────────────────────────────
 const OPENROUTER_MODEL = 'nvidia/llama-3.1-nemotron-70b-instruct'
-const OPENAI_KEY = process.env.OPENAI_API_KEY || ''
 
 async function embed(text: string): Promise<number[]> {
+  if (!OPENAI_KEY) throw new Error('Missing OPENAI_API_KEY')
   const res = await fetch('https://api.openai.com/v1/embeddings', {
     method: 'POST',
     headers: {
@@ -43,10 +47,17 @@ async function getUserId(req: VercelRequest): Promise<string | null> {
   const authHeader = req.headers.authorization
   if (!authHeader?.startsWith('Bearer ')) return null
   const token = authHeader.slice(7)
+  
+  if (!CLERK_SECRET) {
+    console.error('Missing CLERK_SECRET_KEY')
+    return null
+  }
+
   try {
-    const payload = await verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY! })
+    const payload = await verifyToken(token, { secretKey: CLERK_SECRET })
     return payload.sub ?? null
-  } catch {
+  } catch (err) {
+    console.error('Identity verification failed:', err)
     return null
   }
 }
@@ -55,6 +66,11 @@ async function getUserId(req: VercelRequest): Promise<string | null> {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  // Safety check for critical config
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return res.status(500).json({ error: 'Server configuration error: Supabase keys missing' })
   }
 
   const userId = await getUserId(req)
@@ -156,16 +172,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }),
       })
     } else {
+      if (!OPENROUTER_KEY) {
+        return res.status(500).json({ error: 'Server configuration error: OpenRouter key missing' })
+      }
       nvidiaRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${OPENROUTER_KEY}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': 'https://intellivexai.com',
           'X-Title': 'Intellivex AI',
         },
         body: JSON.stringify({
-          model: OPENROUTER_MODEL,
+          model: modelLabel, // Use label passed from FE if different
           messages: apiMessages,
           max_tokens: 800,
           temperature: 0.7,
@@ -176,14 +195,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
   } catch (err) {
-    console.error('OpenRouter fetch error', err)
-    return res.status(502).json({ error: 'AI service unavailable' })
+    console.error('AI fetch error', err)
+    return res.status(502).json({ error: 'AI service connectivity issue', detail: String(err) })
   }
 
   if (!nvidiaRes.ok) {
-    const body = await nvidiaRes.text()
-    console.error('OpenRouter API error', nvidiaRes.status, body)
-    return res.status(502).json({ error: 'AI service error', detail: body })
+    const errorBody = await nvidiaRes.text().catch(() => 'No body')
+    console.error('AI API error', nvidiaRes.status, errorBody)
+    return res.status(502).json({ 
+      error: `AI service error (${nvidiaRes.status})`, 
+      detail: errorBody.length > 500 ? errorBody.slice(0, 500) + '...' : errorBody 
+    })
   }
 
   // ── Pipe SSE stream to client ──────────────────────────────────────────────
@@ -192,7 +214,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Connection', 'keep-alive')
   res.setHeader('X-Accel-Buffering', 'no')
 
-  const reader = nvidiaRes.body!.getReader()
+  const reader = nvidiaRes.body?.getReader()
+  if (!reader) return res.status(502).json({ error: 'OpenRouter stream initialization failed' })
+
   const decoder = new TextDecoder()
   let fullContent = ''
   let inToolCall = false
@@ -206,10 +230,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       const lines = chunk.split('\n')
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6)
+        const trimmedLine = line.trim()
+        if (!trimmedLine) continue
+
+        if (trimmedLine.startsWith('data: ')) {
+          const data = trimmedLine.slice(6)
           if (data === '[DONE]') {
-            res.write(line + '\n\n')
+            res.write('data: [DONE]\n\n')
             continue
           }
           try {
@@ -229,13 +256,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               }
               if (fakeContent) {
                 fullContent += fakeContent
-                // Send as normal content delta
                 res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: fakeContent } }] })}\n\n`)
               }
             } else if (delta?.content) {
-              // Normal text token
               fullContent += delta.content
-              res.write(line + '\n\n')
+              res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: delta.content } }] })}\n\n`)
             }
 
             // Close the tool block when finish_reason is 'tool_calls'
@@ -245,11 +270,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: closeTag } }] })}\n\n`)
               inToolCall = false
             }
-          } catch { 
-             // skip malformed chunks or forward raw
-             if (!inToolCall) {
-               res.write(line + '\n\n')
-             }
+          } catch (e) { 
+             // skip malformed chunks or forward raw if not in tool call
+             console.warn('Failed to parse SSE line', trimmedLine, e)
           }
         }
       }
