@@ -1,7 +1,50 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from '@clerk/backend'
-import { availableTools } from '../src/lib/tools'
+
+console.log('API_MODULE_LOADED')
+
+// ── Shared Tools (Inlined for Vercel bundling stability) ──────────────────────
+const availableTools = [
+  {
+    type: "function",
+    function: {
+      name: "execute_python",
+      description: "Execute Python code in a secure sandboxed environment. Use this to perform calculations, data analysis, or run algorithms.",
+      parameters: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description: "The python code to execute. MUST be valid python."
+          }
+        },
+        required: ["code"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "generate_image",
+      description: "Generate a new image based on a prompt.",
+      parameters: {
+        type: "object",
+        properties: {
+          prompt: {
+            type: "string",
+            description: "A highly descriptive prompt for the image."
+          },
+          style: {
+            type: "string",
+            description: "Optional style ID (e.g. realistic, anime)."
+          }
+        },
+        required: ["prompt"]
+      }
+    }
+  }
+];
 
 // ── Environment Variables ───────────────────────────────────────────────────
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || ''
@@ -72,6 +115,7 @@ async function getUserId(req: VercelRequest): Promise<string | null> {
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('HANDLER_INVOKED', { method: req.method, url: req.url })
   try {
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'Method not allowed' })
@@ -80,8 +124,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Safety check for critical config managed via getter
     const supabase = getSupabase()
 
-  const userId = await getUserId(req)
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' })
+    // Identity Check
+    console.log('AUTH_START')
+    const userId = await getUserId(req)
+    console.log('AUTH_COMPLETE', { userId: !!userId })
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' })
 
   const { chatId, messages: rawMessages, model: modelLabel = OPENROUTER_MODEL, systemPrompt, webSearch } = req.body as {
     chatId: string

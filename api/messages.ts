@@ -45,6 +45,7 @@ async function verifyChatOwnership(supabase: any, chatId: string, userId: string
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('HANDLER_INVOKED', { method: req.method, url: req.url })
   try {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -52,7 +53,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') return res.status(204).end()
 
     const supabase = getSupabase()
+    console.log('AUTH_START')
     const userId = await getUserId(req)
+    console.log('AUTH_COMPLETE', { userId: !!userId })
     if (!userId) return res.status(401).json({ error: 'Unauthorized' })
 
     // ── GET /api/messages?chat_id=xxx ─────────────────────────────────────────

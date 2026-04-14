@@ -93,6 +93,7 @@ async function callHfModel(
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('HANDLER_INVOKED', { method: req.method, url: req.url })
   try {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS')
@@ -103,7 +104,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { HF_API_KEY } = getEnv()
 
     // Auth
+    console.log('AUTH_START')
     const userId = await getClerkUserId(req)
+    console.log('AUTH_COMPLETE', { userId: !!userId })
     if (!userId) return res.status(401).json({ error: 'Unauthorized' })
 
     const { prompt, style, chatId } = req.body ?? {}
