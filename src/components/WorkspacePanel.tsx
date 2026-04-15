@@ -102,7 +102,7 @@ function TerminalOutput() {
           <span /><span /><span />
         </div>
         <span className="ws-terminal-title">Output</span>
-        <button className="ws-icon-btn" onClick={clearOutputs} title="Clear output">
+        <button className="ws-icon-btn" onClick={clearOutputs} title="Clear output" aria-label="Clear output">
           <Trash2 size={12} />
         </button>
       </div>
@@ -285,6 +285,7 @@ export function WorkspacePanel() {
                   className={`ws-icon-btn ws-react-toggle ${reactLiveMode ? 'active' : ''}`}
                   onClick={() => setReactLiveMode(!reactLiveMode)}
                   title={reactLiveMode ? 'Switch to iframe preview' : 'Switch to React Live'}
+                  aria-label={reactLiveMode ? 'Switch to iframe preview' : 'Switch to React Live'}
                 >
                   <Zap size={13} />
                 </button>
@@ -295,6 +296,7 @@ export function WorkspacePanel() {
                   className="ws-icon-btn ws-export-btn"
                   onClick={() => exportAsZip(previewCode, previewLang)}
                   title="Export as ZIP"
+                  aria-label="Export as ZIP"
                 >
                   <Download size={14} />
                 </button>
@@ -311,7 +313,7 @@ export function WorkspacePanel() {
                   <span>{isRunning ? 'Running…' : 'Run'}</span>
                 </motion.button>
               )}
-              <button className="ws-icon-btn ws-close-btn" onClick={closeWorkspace}>
+              <button className="ws-icon-btn ws-close-btn" onClick={closeWorkspace} title="Close workspace" aria-label="Close workspace">
                 <X size={16} />
               </button>
             </div>
