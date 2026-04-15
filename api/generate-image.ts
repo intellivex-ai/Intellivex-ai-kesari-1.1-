@@ -125,6 +125,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const supabase = getSupabase()
 
+    if (supabase) {
+      // Verify chat ownership
+      const { data: chat, error: chatErr } = await supabase
+        .from('chats')
+        .select('user_id')
+        .eq('id', chatId)
+        .single()
+
+      if (chatErr || !chat || chat.user_id !== userId) {
+        return res.status(403).json({ error: 'Forbidden' })
+      }
+    }
+
     // Daily limit
     const DAILY_LIMIT = 10
     const today = new Date().toISOString().slice(0, 10)
