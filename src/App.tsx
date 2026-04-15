@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, createContext,  } from "react";
+import { useState, useRef, useEffect, useCallback, createContext, memo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useUser, UserButton as ClerkUserButton } from "@clerk/clerk-react";
 import {
@@ -434,7 +434,7 @@ function Reactions({ reaction, onReact }: {
 }
 
 // ── Message Row ───────────────────────────────────────────────────────────────
-function MessageRow({ msg, onRegenerate, onRegenerateImage, isLast, streaming, onReact, onBranchChat }: {
+const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateImage, isLast, streaming, onReact, onBranchChat }: {
   msg: UIMessage;
   onRegenerate?: () => void;
   onRegenerateImage?: (prompt: string, style?: string, id?: string) => void;
@@ -629,7 +629,7 @@ function MessageRow({ msg, onRegenerate, onRegenerateImage, isLast, streaming, o
       </div>
     </motion.div>
   );
-}
+});
 
 // ── Empty State (audio-reactive) ──────────────────────────────────────────────
 function EmptyState() {
