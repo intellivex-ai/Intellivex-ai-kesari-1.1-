@@ -64,7 +64,8 @@ function renderInline(text: string): React.ReactNode {
 }
 
 // ── Markdown table ────────────────────────────────────────────────────────────
-function MarkdownTable({ lines }: { lines: string[] }) {
+// Memoized to prevent re-renders of static tables during chat streaming
+const MarkdownTable = memo(function MarkdownTable({ lines }: { lines: string[] }) {
   const rows = lines.map(l => l.replace(/^\||\|$/g, "").split("|").map(c => c.trim()));
   const header = rows[0];
   // row[1] is the separator — skip it
@@ -83,10 +84,11 @@ function MarkdownTable({ lines }: { lines: string[] }) {
       </table>
     </div>
   );
-}
+})
 
 // ── Text block (handles headings, lists, tables, paragraphs) ─────────────────
-function TextBlock({ text }: { text: string }) {
+// Memoized to avoid re-rendering entire past conversation blocks during new token streams
+const TextBlock = memo(function TextBlock({ text }: { text: string }) {
   const lines = text.split("\n");
   const out: React.ReactNode[] = [];
   let listItems: React.ReactNode[] = [];
@@ -121,9 +123,10 @@ function TextBlock({ text }: { text: string }) {
   flushList();
   flushTable();
   return <>{out}</>;
-}
+})
 
-function ThoughtBlock({ content }: { content: string }) {
+// Memoized to prevent deep re-renders of thought steps during active stream
+const ThoughtBlock = memo(function ThoughtBlock({ content }: { content: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`thought-block ${open ? 'open' : ''}`}>
@@ -148,9 +151,10 @@ function ThoughtBlock({ content }: { content: string }) {
       </AnimatePresence>
     </div>
   );
-}
+})
 
-function ToolBlock({ content, name }: { content: string; name?: string }) {
+// Memoized to prevent deep re-renders of tool blocks during active stream
+const ToolBlock = memo(function ToolBlock({ content, name }: { content: string; name?: string }) {
   const [open, setOpen] = useState(false);
   const { runCode } = useWorkspaceStore();
 
@@ -199,9 +203,11 @@ function ToolBlock({ content, name }: { content: string; name?: string }) {
       </AnimatePresence>
     </div>
   );
-}
+})
 
-function MarkdownBody({ content }: { content: string }) {
+// Memoized parent container that splits the content into chunks.
+// Ensures stable chunks (completed parts of the stream) are not re-rendered unnecessarily.
+const MarkdownBody = memo(function MarkdownBody({ content }: { content: string }) {
   const nodes: React.ReactNode[] = [];
   
   // Extract both thought blocks and tool blocks safely
@@ -246,7 +252,7 @@ function MarkdownBody({ content }: { content: string }) {
   }
 
   return <div className="md-content">{nodes}</div>;
-}
+})
 
 // ── Waveform typing indicator ─────────────────────────────────────────────────
 function TypingIndicator() {
