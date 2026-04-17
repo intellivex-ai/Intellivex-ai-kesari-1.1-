@@ -86,7 +86,7 @@ function MarkdownTable({ lines }: { lines: string[] }) {
 }
 
 // ── Text block (handles headings, lists, tables, paragraphs) ─────────────────
-function TextBlock({ text }: { text: string }) {
+const TextBlock = memo(function TextBlock({ text }: { text: string }) {
   const lines = text.split("\n");
   const out: React.ReactNode[] = [];
   let listItems: React.ReactNode[] = [];
@@ -121,9 +121,9 @@ function TextBlock({ text }: { text: string }) {
   flushList();
   flushTable();
   return <>{out}</>;
-}
+});
 
-function ThoughtBlock({ content }: { content: string }) {
+const ThoughtBlock = memo(function ThoughtBlock({ content }: { content: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`thought-block ${open ? 'open' : ''}`}>
@@ -148,9 +148,9 @@ function ThoughtBlock({ content }: { content: string }) {
       </AnimatePresence>
     </div>
   );
-}
+});
 
-function ToolBlock({ content, name }: { content: string; name?: string }) {
+const ToolBlock = memo(function ToolBlock({ content, name }: { content: string; name?: string }) {
   const [open, setOpen] = useState(false);
   const { runCode } = useWorkspaceStore();
 
@@ -199,14 +199,14 @@ function ToolBlock({ content, name }: { content: string; name?: string }) {
       </AnimatePresence>
     </div>
   );
-}
+});
 
-function MarkdownBody({ content }: { content: string }) {
+const MarkdownBody = memo(function MarkdownBody({ content }: { content: string }) {
   const nodes: React.ReactNode[] = [];
   
   // Extract both thought blocks and tool blocks safely
   const blockRe = /<(think|thought|tool)(?:\s+name="([^"]*)")?>([\s\S]*?)(?:<\/\1>|$)/g;
-  let textSegments = [];
+  const textSegments = [];
   let lastIndex = 0;
   let m: RegExpExecArray | null;
 
@@ -246,7 +246,7 @@ function MarkdownBody({ content }: { content: string }) {
   }
 
   return <div className="md-content">{nodes}</div>;
-}
+});
 
 // ── Waveform typing indicator ─────────────────────────────────────────────────
 function TypingIndicator() {
