@@ -148,6 +148,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
                 ref={searchRef}
                 className="agent-search-input"
                 placeholder="Search agents…"
+                aria-label="Search agents"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
