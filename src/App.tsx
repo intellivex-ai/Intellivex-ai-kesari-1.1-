@@ -884,6 +884,7 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
             onChange={handleTextChange}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             placeholder={listening ? "🎤 Listening…" : isImageMode ? "Describe your image…" : stagedFiles.length > 0 ? "Ask about these files…" : "Ask anything… or type @ for agents"}
+            aria-label="Message input"
             rows={1}
           />
 
@@ -1027,6 +1028,7 @@ Your responses should be elite, concise, and highly insightful.
                     value={systemPrompt}
                     onChange={e => onSystemPromptChange(e.target.value)}
                     placeholder={DEFAULT_PROMPT}
+                    aria-label="Custom system prompt"
                     rows={10}
                   />
                   <div className="persona-actions">
@@ -1065,7 +1067,7 @@ function RenameInput({ current, onSave, onCancel }: { current: string; onSave: (
   return (
     <input ref={ref} value={val} onChange={e => setVal(e.target.value)}
       onKeyDown={e => { if (e.key === "Enter") onSave(val); if (e.key === "Escape") onCancel(); }}
-      onBlur={() => onSave(val)} className="rename-input" title="Rename chat" placeholder="Enter new title..." />
+      onBlur={() => onSave(val)} className="rename-input" title="Rename chat" aria-label="Rename chat" placeholder="Enter new title..." />
   );
 }
 
@@ -1133,7 +1135,7 @@ function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSetti
 
             <div className="sidebar-search-action">
               <Search size={15} className="search-icon" />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats" aria-label="Search chats" />
               {search && <button className="clear-search" onClick={() => setSearch("")} title="Clear search"><X size={12} /></button>}
             </div>
 
