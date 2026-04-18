@@ -75,6 +75,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         sandboxFrame.sandbox.add('allow-scripts')
         document.body.appendChild(sandboxFrame)
 
+        // Encode code to prevent HTML injection (XSS) via </script> tags in user code
+        const encodedCode = encodeURIComponent(code);
+
         const script = `
           const logs = [];
           const origLog = console.log;
@@ -82,7 +85,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           console.log = (...args) => { logs.push({ type: 'log', text: args.join(' ') }); origLog(...args); };
           console.error = (...args) => { logs.push({ type: 'error', text: args.join(' ') }); origErr(...args); };
           try {
-            ${code}
+            eval(decodeURIComponent("${encodedCode}"));
             window.parent.postMessage({ type: 'done', logs }, '*');
           } catch(e) {
             window.parent.postMessage({ type: 'error', error: e.message, logs }, '*');
