@@ -62,6 +62,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!chatId || !content) {
       return res.status(400).json({ error: 'Missing chatId or content' })
     }
+
+    // Security Enhancement: Verify that the user owns the chat before storing a memory
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('user_id')
+      .eq('id', chatId)
+      .single()
+
+    if (chatErr || !chat || chat.user_id !== userId) {
+      return res.status(403).json({ error: 'Forbidden' })
+    }
+
     try {
       const embedding = await embed(content)
       const { error } = await supabase.from('memories').insert({
