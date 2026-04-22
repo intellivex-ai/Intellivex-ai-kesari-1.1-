@@ -25,7 +25,7 @@ function AgentCard({ agent, active, onSelect }: {
       whileTap={{ scale: 0.97 }}
       transition={{ duration: 0.15 }}
       style={{ '--agent-color': agent.color } as React.CSSProperties}
-      title={agent.description}
+      title={agent.description} aria-label={agent.description}
     >
       <div className="agent-card-icon">
         <Icon size={18} />
@@ -152,7 +152,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
                 onChange={e => setSearch(e.target.value)}
               />
               {search && (
-                <button className="agent-search-clear" onClick={() => setSearch('')}>
+                <button className="agent-search-clear" onClick={() => setSearch('')} aria-label="Clear search">
                   <X size={11} />
                 </button>
               )}

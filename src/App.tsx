@@ -206,7 +206,7 @@ function MarkdownBody({ content }: { content: string }) {
   
   // Extract both thought blocks and tool blocks safely
   const blockRe = /<(think|thought|tool)(?:\s+name="([^"]*)")?>([\s\S]*?)(?:<\/\1>|$)/g;
-  let textSegments = [];
+  const textSegments = [];
   let lastIndex = 0;
   let m: RegExpExecArray | null;
 
@@ -340,11 +340,11 @@ function ImageMessage({ msg, onRegenerate }: { msg: UIMessage; onRegenerate: () 
         </p>
       )}
       <div className="img-actions">
-        <button className="img-action-btn" onClick={download} disabled={downloading} title="Download image">
+        <button className="img-action-btn" onClick={download} disabled={downloading} title="Download image" aria-label="Download image">
           {downloading ? <Loader2 size={12} className="spin" /> : <Download size={12} />}
           {downloading ? 'Saving…' : 'Download'}
         </button>
-        <button className="img-action-btn" onClick={onRegenerate} title="Generate new variation">
+        <button className="img-action-btn" onClick={onRegenerate} title="Generate new variation" aria-label="Generate new variation">
           <RotateCcw size={12} /> Regenerate
         </button>
       </div>
@@ -597,17 +597,17 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
             <div className="msg-footer">
               <div className="msg-footer-left">
                 {!isImage && (
-                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message">
+                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message" aria-label="Copy message">
                     {copied ? <Check size={14} /> : <Copy size={14} />}
                   </button>
                 )}
                 {!isUser && !isImage && (
-                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"}>
+                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"} aria-label={playingTTS ? "Stop reading" : "Read aloud"}>
                     <Volume2 size={14} className={playingTTS ? "playing" : ""} />
                   </button>
                 )}
                 {!isUser && isLast && !streaming && !isImage && onRegenerate && (
-                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response">
+                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response" aria-label="Regenerate response">
                     <RotateCcw size={14} />
                   </button>
                 )}
@@ -873,7 +873,7 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
             </AnimatePresence>
           </div>
 
-          <input ref={fileRef} type="file" className="file-input-hidden" title="Attach file" multiple
+          <input ref={fileRef} type="file" className="file-input-hidden" title="Attach file" aria-label="Attach file" multiple
             accept="image/*,.pdf,.txt,.md,.py,.js,.ts,.tsx,.jsx,.json,.csv,.html,.css,.yaml,.yml,.sh,.sql"
             onChange={handleFileChange}
           />
@@ -890,12 +890,12 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
           <div className="input-right-actions">
             {nearLimit && <span className="char-count">{charCount}</span>}
             <button type="button" className={`input-icon-btn ${listening ? "active-mic" : ""}`}
-              title="Voice input" onClick={toggleVoice}>
+              title="Voice input" aria-label="Voice input" onClick={toggleVoice}>
               {listening ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
 
             {disabled ? (
-              <motion.button onClick={onStop} className="send-btn stop-btn" title="Stop"
+              <motion.button onClick={onStop} className="send-btn stop-btn" title="Stop" aria-label="Stop"
                 whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }}>
                 <Square size={13} strokeWidth={3} />
               </motion.button>
@@ -913,7 +913,7 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
                     />
                   </svg>
                 )}
-                <motion.button onClick={send} disabled={!value.trim() && stagedFiles.length === 0} className="send-btn" title="Send message"
+                <motion.button onClick={send} disabled={!value.trim() && stagedFiles.length === 0} className="send-btn" title="Send message" aria-label="Send message"
                   whileHover={value.trim() || stagedFiles.length > 0 ? { scale: 1.08 } : {}} 
                   whileTap={value.trim() || stagedFiles.length > 0 ? { scale: 0.92 } : {}}>
                   {isImageMode ? <Sparkles size={14} /> : <Send size={14} />}
@@ -970,7 +970,7 @@ Your responses should be elite, concise, and highly insightful.
           <motion.div className="modal wide-modal" initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <span className="modal-title">Settings</span>
-              <button onClick={onClose} className="modal-close" title="Close"><X size={15} /></button>
+              <button onClick={onClose} className="modal-close" title="Close" aria-label="Close"><X size={15} /></button>
             </div>
             {/* Tabs */}
             <div className="modal-tabs">
@@ -1111,7 +1111,7 @@ function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSetti
       <div className={`sidebar ${open ? "open" : ""}`}>
         <div className="sidebar-header">
           <div className="sidebar-brand-row">
-            <button className="brand-dropdown-btn" onClick={onSettings} title="Settings">
+            <button className="brand-dropdown-btn" onClick={onSettings} title="Settings" aria-label="Settings">
               <span className="sidebar-brand-name brand-shimmer">Intellivex AI</span>
               <ChevronDown size={14} className="brand-caret" />
             </button>
@@ -1137,7 +1137,7 @@ function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSetti
               {search && <button className="clear-search" onClick={() => setSearch("")} title="Clear search"><X size={12} /></button>}
             </div>
 
-            <button className="sidebar-action-btn" onClick={onSettings} title="Settings">
+            <button className="sidebar-action-btn" onClick={onSettings} title="Settings" aria-label="Settings">
               <MoreHorizontal size={15} /> <span>More</span>
             </button>
           </div>
@@ -1458,7 +1458,7 @@ function ImmersiveVoiceBtn() {
     <motion.button
       className={`icon-btn voice-immersive-btn ${isActive ? 'active' : ''}`}
       onClick={toggleImmersive}
-      title={immersiveMode ? 'Exit voice mode' : 'Immersive voice mode'}
+      title={immersiveMode ? 'Exit voice mode' : 'Immersive voice mode'} aria-label={immersiveMode ? 'Exit voice mode' : 'Immersive voice mode'}
       whileHover={{ scale: 1.08 }}
       whileTap={{ scale: 0.92 }}
     >
