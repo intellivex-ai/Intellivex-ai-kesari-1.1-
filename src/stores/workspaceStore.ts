@@ -76,13 +76,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         document.body.appendChild(sandboxFrame)
 
         const script = `
+          // 🛡️ Sentinel: Mitigate XSS risk by avoiding direct template interpolation of arbitrary code
           const logs = [];
           const origLog = console.log;
           const origErr = console.error;
           console.log = (...args) => { logs.push({ type: 'log', text: args.join(' ') }); origLog(...args); };
           console.error = (...args) => { logs.push({ type: 'error', text: args.join(' ') }); origErr(...args); };
           try {
-            ${code}
+            eval(decodeURIComponent("${encodeURIComponent(code)}"));
             window.parent.postMessage({ type: 'done', logs }, '*');
           } catch(e) {
             window.parent.postMessage({ type: 'error', error: e.message, logs }, '*');
