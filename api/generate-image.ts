@@ -95,7 +95,12 @@ async function callHfModel(
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('HANDLER_INVOKED', { method: req.method, url: req.url })
   try {
-    res.setHeader('Access-Control-Allow-Origin', '*')
+    const origin = req.headers.origin || '';
+    const ALLOWED_ORIGINS = ['https://intellivexai.com', 'http://localhost:5173', 'http://localhost:3000'];
+    if (ALLOWED_ORIGINS.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS')
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     if (req.method === 'OPTIONS') return res.status(204).end()
