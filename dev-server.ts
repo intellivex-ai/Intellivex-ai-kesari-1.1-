@@ -18,8 +18,17 @@ import cors from 'cors'
 import { createClient } from '@supabase/supabase-js'
 import { createClerkClient } from '@clerk/backend'
 
+const ALLOWED_ORIGINS = ['https://intellivexai.com', 'http://localhost:5173', 'http://localhost:3000']
 const app = express()
-app.use(cors())
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  }
+}))
 app.use(express.json())
 
 // ── Clients ────────────────────────────────────────────────────────────────────

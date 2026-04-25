@@ -42,6 +42,16 @@ async function embed(text: string): Promise<number[]> {
 
 // ── Main handler ────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const ALLOWED_ORIGINS = ['https://intellivexai.com', 'http://localhost:5173', 'http://localhost:3000']
+  const origin = req.headers.origin || ''
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+  }
+  res.setHeader('Vary', 'Origin')
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+  if (req.method === 'OPTIONS') return res.status(204).end()
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
