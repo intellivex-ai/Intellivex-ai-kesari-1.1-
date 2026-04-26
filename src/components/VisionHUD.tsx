@@ -40,7 +40,7 @@ function ThumbnailCard({ file, onRemove }: {
         <span className="vision-thumb-name">{file.name.length > 18 ? file.name.slice(0, 15) + '…' : file.name}</span>
         <span className="vision-thumb-size">{formatSize(file.size)}</span>
       </div>
-      <button className="vision-thumb-remove" onClick={onRemove} title="Remove file">
+      <button className="vision-thumb-remove" onClick={onRemove} title="Remove file" aria-label="Remove file">
         <X size={10} />
       </button>
     </motion.div>
@@ -138,7 +138,7 @@ export function VisionChips() {
               <span className="vision-chip-icon"><FileTypeIcon type={f.type} /></span>
             )}
             <span className="vision-chip-name">{f.name.length > 14 ? f.name.slice(0, 11) + '…' : f.name}</span>
-            <button onClick={() => removeFile(f.id)} className="vision-chip-remove" title="Remove">
+            <button onClick={() => removeFile(f.id)} className="vision-chip-remove" title="Remove" aria-label="Remove">
               <X size={9} />
             </button>
           </motion.div>
