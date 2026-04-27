@@ -75,6 +75,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         sandboxFrame.sandbox.add('allow-scripts')
         document.body.appendChild(sandboxFrame)
 
+        // URL-encode the user code to prevent HTML injection/XSS
+        // when interpolating it into the srcdoc <script> tag.
+        const encodedCode = encodeURIComponent(code);
         const script = `
           const logs = [];
           const origLog = console.log;
@@ -82,7 +85,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           console.log = (...args) => { logs.push({ type: 'log', text: args.join(' ') }); origLog(...args); };
           console.error = (...args) => { logs.push({ type: 'error', text: args.join(' ') }); origErr(...args); };
           try {
-            ${code}
+            eval(decodeURIComponent("${encodedCode}"));
             window.parent.postMessage({ type: 'done', logs }, '*');
           } catch(e) {
             window.parent.postMessage({ type: 'error', error: e.message, logs }, '*');
@@ -98,7 +101,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             }
           }
           window.addEventListener('message', handler)
-          sandboxFrame.srcdoc = `<script>${script}<\/script>`
+          sandboxFrame.srcdoc = `<script>${script}</script>`
         })
 
         result.logs.forEach((l) => {
