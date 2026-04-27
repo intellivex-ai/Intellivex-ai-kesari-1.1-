@@ -440,7 +440,7 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
   onRegenerateImage?: (prompt: string, style?: string, id?: string) => void;
   isLast?: boolean;
   streaming?: boolean;
-  onReact: (r: "up" | "down" | null) => void;
+  onReact: (id: string, r: "up" | "down" | null) => void;
   onBranchChat?: (id: string, text: string) => void;
 }) {
   const isUser = msg.role === "user";
@@ -617,7 +617,7 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
                   </button>
                 )}
                 {!isUser && !isImage && (
-                  <Reactions reaction={msg.reaction} onReact={onReact} />
+                  <Reactions reaction={msg.reaction} onReact={(r) => onReact(msg.id, r)} />
                 )}
               </div>
               <span className="msg-timestamp">
@@ -1393,10 +1393,10 @@ export default function App() {
                             key={msg.id}
                             msg={msg}
                             isLast={i === messages.length - 1}
-                            streaming={streaming}
+                            streaming={i === messages.length - 1 ? streaming : false}
                             onRegenerate={i === messages.length - 1 ? handleRegen : undefined}
                             onRegenerateImage={handleRegenImage}
-                            onReact={(r) => reactToMessage(msg.id, r)}
+                            onReact={reactToMessage}
                             onBranchChat={branchChat}
                           />
                         ))}
