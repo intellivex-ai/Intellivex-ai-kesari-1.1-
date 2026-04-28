@@ -127,7 +127,7 @@ function ThoughtBlock({ content }: { content: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`thought-block ${open ? 'open' : ''}`}>
-      <button className="thought-toggle" onClick={() => setOpen(!open)}>
+      <button className="thought-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
         <BrainCircuit size={14} className="thought-icon" />
         <span>Inner Monologue</span>
         <ChevronRight size={14} className="thought-chevron" />
@@ -166,7 +166,7 @@ function ToolBlock({ content, name }: { content: string; name?: string }) {
 
   return (
     <div className={`thought-block tool-block-container ${open ? 'open' : ''}`}>
-      <button className="thought-toggle tool-block-toggle" onClick={() => setOpen(!open)}>
+      <button className="thought-toggle tool-block-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
         <Code2 size={14} className="thought-icon" />
         <span>Executing {name || 'Tool'}</span>
         <ChevronRight size={14} className="thought-chevron" />
@@ -885,6 +885,7 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             placeholder={listening ? "🎤 Listening…" : isImageMode ? "Describe your image…" : stagedFiles.length > 0 ? "Ask about these files…" : "Ask anything… or type @ for agents"}
             rows={1}
+            aria-label="Message input"
           />
 
           <div className="input-right-actions">
