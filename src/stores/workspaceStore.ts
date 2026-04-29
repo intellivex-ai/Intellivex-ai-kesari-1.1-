@@ -75,6 +75,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         sandboxFrame.sandbox.add('allow-scripts')
         document.body.appendChild(sandboxFrame)
 
+        // Fix XSS by safely serializing the code to a string and avoiding premature script tag closing
+        const safeCodeStr = JSON.stringify(code).replace(/</g, '\\u003c');
         const script = `
           const logs = [];
           const origLog = console.log;
@@ -82,7 +84,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           console.log = (...args) => { logs.push({ type: 'log', text: args.join(' ') }); origLog(...args); };
           console.error = (...args) => { logs.push({ type: 'error', text: args.join(' ') }); origErr(...args); };
           try {
-            ${code}
+            eval(${safeCodeStr});
             window.parent.postMessage({ type: 'done', logs }, '*');
           } catch(e) {
             window.parent.postMessage({ type: 'error', error: e.message, logs }, '*');
