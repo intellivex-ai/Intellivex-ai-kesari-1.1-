@@ -1,0 +1,3 @@
+## 2024-05-24 - Accessibility for icon-only buttons
+**Learning:** Using only the `title` attribute on icon-only buttons provides a tooltip on hover, but it is insufficient for accessibility purposes. Screen readers require an explicit `aria-label` attribute to properly identify and describe the purpose of an interactive element that lacks text content. In this app, many core chat UI components were using `title` but missing `aria-label`.
+**Action:** When creating or modifying icon-only buttons, always ensure that an `aria-label` attribute is added in addition to `title`. The `aria-label` should provide a clear and concise description of the button's function. E.g., `<button aria-label="Copy message" title="Copy message">...`

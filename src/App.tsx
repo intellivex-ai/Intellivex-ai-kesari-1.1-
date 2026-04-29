@@ -340,11 +340,11 @@ function ImageMessage({ msg, onRegenerate }: { msg: UIMessage; onRegenerate: () 
         </p>
       )}
       <div className="img-actions">
-        <button className="img-action-btn" onClick={download} disabled={downloading} title="Download image">
+        <button className="img-action-btn" onClick={download} disabled={downloading} title="Download image" aria-label="Download image">
           {downloading ? <Loader2 size={12} className="spin" /> : <Download size={12} />}
           {downloading ? 'Saving…' : 'Download'}
         </button>
-        <button className="img-action-btn" onClick={onRegenerate} title="Generate new variation">
+        <button className="img-action-btn" onClick={onRegenerate} title="Generate new variation" aria-label="Generate new variation">
           <RotateCcw size={12} /> Regenerate
         </button>
       </div>
@@ -597,22 +597,22 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
             <div className="msg-footer">
               <div className="msg-footer-left">
                 {!isImage && (
-                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message">
+                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message" aria-label="Copy message">
                     {copied ? <Check size={14} /> : <Copy size={14} />}
                   </button>
                 )}
                 {!isUser && !isImage && (
-                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"}>
+                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"} aria-label={playingTTS ? "Stop reading" : "Read aloud"}>
                     <Volume2 size={14} className={playingTTS ? "playing" : ""} />
                   </button>
                 )}
                 {!isUser && isLast && !streaming && !isImage && onRegenerate && (
-                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response">
+                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response" aria-label="Regenerate response">
                     <RotateCcw size={14} />
                   </button>
                 )}
                 {isUser && !editing && (
-                  <button onClick={() => { setEditVal(msg.content); setEditing(true); }} className="msg-action-icon" title="Edit message">
+                  <button onClick={() => { setEditVal(msg.content); setEditing(true); }} className="msg-action-icon" title="Edit message" aria-label="Edit message">
                     <Edit3 size={14} />
                   </button>
                 )}
@@ -890,12 +890,12 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
           <div className="input-right-actions">
             {nearLimit && <span className="char-count">{charCount}</span>}
             <button type="button" className={`input-icon-btn ${listening ? "active-mic" : ""}`}
-              title="Voice input" onClick={toggleVoice}>
+              title="Voice input" aria-label="Voice input" onClick={toggleVoice}>
               {listening ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
 
             {disabled ? (
-              <motion.button onClick={onStop} className="send-btn stop-btn" title="Stop"
+              <motion.button onClick={onStop} className="send-btn stop-btn" title="Stop" aria-label="Stop generation"
                 whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }}>
                 <Square size={13} strokeWidth={3} />
               </motion.button>
@@ -913,7 +913,7 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
                     />
                   </svg>
                 )}
-                <motion.button onClick={send} disabled={!value.trim() && stagedFiles.length === 0} className="send-btn" title="Send message"
+                <motion.button onClick={send} disabled={!value.trim() && stagedFiles.length === 0} className="send-btn" title="Send message" aria-label="Send message"
                   whileHover={value.trim() || stagedFiles.length > 0 ? { scale: 1.08 } : {}} 
                   whileTap={value.trim() || stagedFiles.length > 0 ? { scale: 0.92 } : {}}>
                   {isImageMode ? <Sparkles size={14} /> : <Send size={14} />}
@@ -970,7 +970,7 @@ Your responses should be elite, concise, and highly insightful.
           <motion.div className="modal wide-modal" initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <span className="modal-title">Settings</span>
-              <button onClick={onClose} className="modal-close" title="Close"><X size={15} /></button>
+              <button onClick={onClose} className="modal-close" title="Close" aria-label="Close"><X size={15} /></button>
             </div>
             {/* Tabs */}
             <div className="modal-tabs">
@@ -1111,7 +1111,7 @@ function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSetti
       <div className={`sidebar ${open ? "open" : ""}`}>
         <div className="sidebar-header">
           <div className="sidebar-brand-row">
-            <button className="brand-dropdown-btn" onClick={onSettings} title="Settings">
+            <button className="brand-dropdown-btn" onClick={onSettings} title="Settings" aria-label="Settings">
               <span className="sidebar-brand-name brand-shimmer">Intellivex AI</span>
               <ChevronDown size={14} className="brand-caret" />
             </button>
@@ -1127,17 +1127,17 @@ function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSetti
           </div>
 
           <div className="sidebar-actions">
-            <button className="sidebar-action-btn" onClick={() => { onNew(); onClose(); }} title="New chat">
+            <button className="sidebar-action-btn" onClick={() => { onNew(); onClose(); }} title="New chat" aria-label="New chat">
               <Edit3 size={15} /> <span>New chat</span>
             </button>
 
             <div className="sidebar-search-action">
               <Search size={15} className="search-icon" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats" />
-              {search && <button className="clear-search" onClick={() => setSearch("")} title="Clear search"><X size={12} /></button>}
+              {search && <button className="clear-search" onClick={() => setSearch("")} title="Clear search" aria-label="Clear search"><X size={12} /></button>}
             </div>
 
-            <button className="sidebar-action-btn" onClick={onSettings} title="Settings">
+            <button className="sidebar-action-btn" onClick={onSettings} title="Settings" aria-label="Settings">
               <MoreHorizontal size={15} /> <span>More</span>
             </button>
           </div>
@@ -1168,8 +1168,8 @@ function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSetti
                       <span className="chat-title">{chat.title}</span>
                     )}
                     <div className="chat-actions">
-                      <button className="chat-action-btn" onClick={e => { e.stopPropagation(); setEditingId(chat.id); }} title="Rename"><Edit3 size={11} /></button>
-                      <button className="chat-action-btn danger" onClick={e => { e.stopPropagation(); onDelete(chat.id); }} title="Delete"><Trash2 size={11} /></button>
+                      <button className="chat-action-btn" onClick={e => { e.stopPropagation(); setEditingId(chat.id); }} title="Rename" aria-label="Rename"><Edit3 size={11} /></button>
+                      <button className="chat-action-btn danger" onClick={e => { e.stopPropagation(); onDelete(chat.id); }} title="Delete" aria-label="Delete"><Trash2 size={11} /></button>
                     </div>
                   </motion.div>
                 ))}
@@ -1330,10 +1330,10 @@ export default function App() {
               {/* Header */}
               <div className="header">
                 <div className="header-left">
-                  <button className="mobile-menu-btn" onClick={() => setMobileSidebar(true)} title="Open menu"><Menu size={18} /></button>
+                  <button className="mobile-menu-btn" onClick={() => setMobileSidebar(true)} title="Open menu" aria-label="Open menu"><Menu size={18} /></button>
                   {!desktopSidebar && (
                     <div className="tooltip-wrap">
-                      <button className="desktop-menu-btn" onClick={() => setDesktopSidebar(true)} title="Open sidebar"><PanelLeft size={18} /></button>
+                      <button className="desktop-menu-btn" onClick={() => setDesktopSidebar(true)} title="Open sidebar" aria-label="Open sidebar"><PanelLeft size={18} /></button>
                       <div className="tooltip tooltip-right">Open sidebar <span className="kbd"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>S</kbd></span></div>
                     </div>
                   )}
@@ -1350,7 +1350,7 @@ export default function App() {
                 <div className="header-right">
                   {messages.length > 0 && (
                     <div className="export-wrap">
-                      <button className="icon-btn" onClick={() => setExportOpen(!exportOpen)} title="Export alternatives">
+                      <button className="icon-btn" onClick={() => setExportOpen(!exportOpen)} title="Export alternatives" aria-label="Export alternatives">
                         <Download size={16} />
                       </button>
                       <AnimatePresence>
@@ -1368,11 +1368,11 @@ export default function App() {
                   <button
                     className={`icon-btn ${workspaceOpen ? 'active' : ''}`}
                     onClick={() => workspaceOpen ? closeWorkspace() : openWorkspace()}
-                    title="Toggle Workspace"
+                    title="Toggle Workspace" aria-label="Toggle Workspace"
                   >
                     <LayoutPanelLeft size={15} />
                   </button>
-                  <button className="icon-btn" onClick={() => setSettingsOpen(true)} title="Settings">
+                  <button className="icon-btn" onClick={() => setSettingsOpen(true)} title="Settings" aria-label="Settings">
                     <Settings size={15} />
                   </button>
                 </div>
