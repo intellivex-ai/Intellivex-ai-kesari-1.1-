@@ -75,6 +75,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         sandboxFrame.sandbox.add('allow-scripts')
         document.body.appendChild(sandboxFrame)
 
+        // Securely serialize code to prevent XSS breakout of the <script> tag in srcdoc
+        const safeCode = JSON.stringify(code).replace(/</g, '\\u003c');
         const script = `
           const logs = [];
           const origLog = console.log;
@@ -82,7 +84,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           console.log = (...args) => { logs.push({ type: 'log', text: args.join(' ') }); origLog(...args); };
           console.error = (...args) => { logs.push({ type: 'error', text: args.join(' ') }); origErr(...args); };
           try {
-            ${code}
+            eval(${safeCode});
             window.parent.postMessage({ type: 'done', logs }, '*');
           } catch(e) {
             window.parent.postMessage({ type: 'error', error: e.message, logs }, '*');
@@ -98,7 +100,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             }
           }
           window.addEventListener('message', handler)
-          sandboxFrame.srcdoc = `<script>${script}<\/script>`
+          sandboxFrame.srcdoc = `<script>${script}</script>`
         })
 
         result.logs.forEach((l) => {
