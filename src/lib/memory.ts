@@ -54,18 +54,23 @@ const DB_NAME = 'intellivex-memory'
 const DB_VERSION = 1
 const STORE_NAME = 'chunks'
 
+let dbPromise: Promise<IDBDatabase> | null = null
+
 function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => {
-      const db = req.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION)
+      req.onupgradeneeded = () => {
+        const db = req.result
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+        }
       }
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    })
+  }
+  return dbPromise
 }
 
 async function getAllChunks(): Promise<MemoryChunk[]> {
@@ -127,7 +132,12 @@ export async function addMemory(
 ): Promise<void> {
   if (!content || content.trim().length < 30) return
   const chunks = chunkText(content.trim())
+
+  // ⚡ Bolt Performance: Use Promise.all to save chunks concurrently
+  // while yielding to the main thread to prevent UI jank for large texts
+  const putPromises = []
   for (const chunk of chunks) {
+    await new Promise(r => setTimeout(r, 0))
     const tokens = tokenize(chunk)
     const embedding = buildTFVector(tokens)
     const mem: MemoryChunk = {
@@ -136,16 +146,18 @@ export async function addMemory(
       embedding,
       metadata: { ...metadata, timestamp: Date.now() },
     }
-    await putChunk(mem)
+    putPromises.push(putChunk(mem))
   }
+  await Promise.all(putPromises)
 
   // Prune oldest if over limit
   const all = await getAllChunks()
   if (all.length > MAX_CHUNKS) {
     const sorted = all.sort((a, b) => a.metadata.timestamp - b.metadata.timestamp)
-    for (const old of sorted.slice(0, all.length - MAX_CHUNKS)) {
-      await deleteChunk(old.id)
-    }
+    const chunksToDelete = sorted.slice(0, all.length - MAX_CHUNKS)
+
+    // ⚡ Bolt Performance: Use Promise.all to prune old chunks concurrently
+    await Promise.all(chunksToDelete.map(old => deleteChunk(old.id)))
   }
 }
 
