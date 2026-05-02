@@ -440,7 +440,7 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
   onRegenerateImage?: (prompt: string, style?: string, id?: string) => void;
   isLast?: boolean;
   streaming?: boolean;
-  onReact: (r: "up" | "down" | null) => void;
+  onReact: (id: string, r: "up" | "down" | null) => void;
   onBranchChat?: (id: string, text: string) => void;
 }) {
   const isUser = msg.role === "user";
@@ -617,7 +617,7 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
                   </button>
                 )}
                 {!isUser && !isImage && (
-                  <Reactions reaction={msg.reaction} onReact={onReact} />
+                  <Reactions reaction={msg.reaction} onReact={(r) => onReact(msg.id, r)} />
                 )}
               </div>
               <span className="msg-timestamp">
@@ -1388,18 +1388,21 @@ export default function App() {
                   ) : (
                     <>
                       <AnimatePresence initial={false} mode="popLayout">
-                        {messages.map((msg, i) => (
-                          <MessageRow
-                            key={msg.id}
-                            msg={msg}
-                            isLast={i === messages.length - 1}
-                            streaming={streaming}
-                            onRegenerate={i === messages.length - 1 ? handleRegen : undefined}
-                            onRegenerateImage={handleRegenImage}
-                            onReact={(r) => reactToMessage(msg.id, r)}
-                            onBranchChat={branchChat}
-                          />
-                        ))}
+                        {messages.map((msg, i) => {
+                          const isLast = i === messages.length - 1;
+                          return (
+                            <MessageRow
+                              key={msg.id}
+                              msg={msg}
+                              isLast={isLast}
+                              streaming={isLast ? streaming : false}
+                              onRegenerate={isLast ? handleRegen : undefined}
+                              onRegenerateImage={handleRegenImage}
+                              onReact={reactToMessage}
+                              onBranchChat={branchChat}
+                            />
+                          );
+                        })}
                       </AnimatePresence>
                       <div ref={bottomRef} className="chat-bottom-spacer" />
                     </>
