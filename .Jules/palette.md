@@ -1,3 +1,3 @@
-## 2026-04-14 - A11y Attributes for Icon Buttons
-**Learning:** Icon-only buttons without `aria-label`s or `title`s severely impair screen reader and keyboard navigation users as they lack context. Adding these attributes significantly improves UX.
-**Action:** Always ensure any icon-only button contains descriptive `aria-label` and `title` attributes that clarify their functionality.
+## 2023-10-24 - Accessibility on icon-only buttons
+**Learning:** Icon-only buttons relying solely on `title` attributes are an accessibility anti-pattern. While tooltips provide visual context, screen readers require explicit `aria-label` attributes to interpret the button's purpose correctly.
+**Action:** Always ensure that icon-only interactive elements in this React application include both a descriptive `title` and a matching `aria-label`.
