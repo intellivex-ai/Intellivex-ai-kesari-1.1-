@@ -54,18 +54,26 @@ const DB_NAME = 'intellivex-memory'
 const DB_VERSION = 1
 const STORE_NAME = 'chunks'
 
+let dbPromise: Promise<IDBDatabase> | null = null;
+
 function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => {
-      const db = req.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION)
+      req.onupgradeneeded = () => {
+        const db = req.result
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+        }
       }
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => {
+        dbPromise = null; // Reset cache on error so next attempt can retry
+        reject(req.error)
+      }
+    })
+  }
+  return dbPromise;
 }
 
 async function getAllChunks(): Promise<MemoryChunk[]> {
@@ -127,7 +135,11 @@ export async function addMemory(
 ): Promise<void> {
   if (!content || content.trim().length < 30) return
   const chunks = chunkText(content.trim())
+  const putPromises: Promise<void>[] = []
+
   for (const chunk of chunks) {
+    // Yield to main thread during heavy synchronous text processing to prevent UI jank
+    await new Promise(r => setTimeout(r, 0))
     const tokens = tokenize(chunk)
     const embedding = buildTFVector(tokens)
     const mem: MemoryChunk = {
@@ -136,16 +148,21 @@ export async function addMemory(
       embedding,
       metadata: { ...metadata, timestamp: Date.now() },
     }
-    await putChunk(mem)
+    putPromises.push(putChunk(mem))
   }
+
+  // Await all chunk insertions concurrently
+  await Promise.all(putPromises)
 
   // Prune oldest if over limit
   const all = await getAllChunks()
   if (all.length > MAX_CHUNKS) {
     const sorted = all.sort((a, b) => a.metadata.timestamp - b.metadata.timestamp)
-    for (const old of sorted.slice(0, all.length - MAX_CHUNKS)) {
-      await deleteChunk(old.id)
-    }
+    const deletePromises = sorted
+      .slice(0, all.length - MAX_CHUNKS)
+      .map(old => deleteChunk(old.id))
+    // Execute deletions concurrently
+    await Promise.all(deletePromises)
   }
 }
 
