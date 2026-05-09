@@ -1,3 +1,3 @@
-## 2026-04-14 - A11y Attributes for Icon Buttons
-**Learning:** Icon-only buttons without `aria-label`s or `title`s severely impair screen reader and keyboard navigation users as they lack context. Adding these attributes significantly improves UX.
-**Action:** Always ensure any icon-only button contains descriptive `aria-label` and `title` attributes that clarify their functionality.
+## 2024-05-09 - Added missing ARIA labels to button tooltips
+**Learning:** Icon-only buttons with tooltips must also use `aria-label` for screen reader accessibility, as `title` is insufficient. Many icon-only buttons in this app lacked `aria-label`.
+**Action:** Always add `aria-label` to buttons where `title` is present, or when a button relies only on an icon for its label.
