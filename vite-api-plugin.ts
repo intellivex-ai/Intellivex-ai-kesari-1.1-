@@ -229,6 +229,14 @@ export function intellivexApiPlugin(): Plugin {
             const limit = checkRateLimit(userId)
             if (!limit.ok) return sendJson(res, 429, { error: 'Rate limit reached. Try again in an hour.' })
 
+            if (isSupabaseReady() && chatId) {
+              const chatData = await sbFetch('GET', 'chats', `id=eq.${chatId}&select=user_id`)
+              const chat = Array.isArray(chatData) ? chatData[0] : chatData
+              if (!chat || chat.user_id !== userId) {
+                return sendJson(res, 403, { error: 'Forbidden' })
+              }
+            }
+
             const orKey = process.env.OPENROUTER_API_KEY ?? ''
             if (!orKey || orKey.includes('REPLACE_ME') || orKey.length < 20) {
               console.error('\n  ❌ [intellivex] OPENROUTER_API_KEY not set in .env.local\n')
@@ -378,6 +386,10 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/messages' && req.method === 'GET') {
             const chat_id = query.chat_id as string
             if (!isSupabaseReady() || !chat_id) return sendJson(res, 200, [])
+            const chatData = await sbFetch('GET', 'chats', `id=eq.${chat_id}&select=user_id`)
+            const chat = Array.isArray(chatData) ? chatData[0] : chatData
+            if (!chat || chat.user_id !== userId) return sendJson(res, 403, { error: 'Forbidden' })
+
             const data = await sbFetch('GET', 'messages', `chat_id=eq.${encodeURIComponent(chat_id)}&order=created_at.asc`)
             return sendJson(res, 200, data ?? [])
           }
@@ -387,6 +399,11 @@ export function intellivexApiPlugin(): Plugin {
             const body = await parseBody(req)
             if (!isSupabaseReady()) {
               return sendJson(res, 201, { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
+            }
+            if (body.chat_id) {
+              const chatData = await sbFetch('GET', 'chats', `id=eq.${body.chat_id}&select=user_id`)
+              const chat = Array.isArray(chatData) ? chatData[0] : chatData
+              if (!chat || chat.user_id !== userId) return sendJson(res, 403, { error: 'Forbidden' })
             }
             const data = await sbFetch('POST', 'messages', 'select=*', body)
             const msg = Array.isArray(data) ? data[0] : data
@@ -400,6 +417,14 @@ export function intellivexApiPlugin(): Plugin {
 
             if (!prompt?.trim() || !chatId) {
               return sendJson(res, 400, { error: 'Missing prompt or chatId' })
+            }
+
+            if (isSupabaseReady()) {
+              const chatData = await sbFetch('GET', 'chats', `id=eq.${chatId}&select=user_id`)
+              const chat = Array.isArray(chatData) ? chatData[0] : chatData
+              if (!chat || chat.user_id !== userId) {
+                return sendJson(res, 403, { error: 'Forbidden' })
+              }
             }
 
             // ── Validate HF API key ─────────────────────────────────────────
