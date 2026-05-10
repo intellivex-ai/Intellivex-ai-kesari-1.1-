@@ -1,9 +1,12 @@
+import React from "react";
 import { useState } from "react";
 import { Check, Copy, LayoutPanelLeft, Terminal } from "lucide-react";
 import { useToast } from "../context/ToastContext";
 import { useWorkspaceStore } from "../stores/workspaceStore";
 
-export function CodeBlock({ lang, code }: { lang: string; code: string }) {
+// ⚡ Bolt Performance Optimization:
+// Wrap CodeBlock with React.memo to prevent syntax highlighting re-execution during parent component re-renders (e.g. streaming messages).
+export const CodeBlock = React.memo(function CodeBlock({ lang, code }: { lang: string; code: string }) {
   const [copied, setCopied] = useState(false);
   const toast = useToast();
   const { openWorkspace, runCode } = useWorkspaceStore();
@@ -44,4 +47,4 @@ export function CodeBlock({ lang, code }: { lang: string; code: string }) {
       <div className="code-pre"><code>{code}</code></div>
     </div>
   );
-}
+});
