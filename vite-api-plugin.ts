@@ -213,6 +213,13 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/chat' && req.method === 'POST') {
             const body = await parseBody(req)
             const chatId = body.chatId as string
+            if (isSupabaseReady() && chatId) {
+              const chatData = await sbFetch('GET', 'chats', `id=eq.${chatId}&select=user_id`)
+              const chat = Array.isArray(chatData) ? chatData[0] : chatData
+              if (!chat || chat.user_id !== userId) {
+                return sendJson(res, 403, { error: 'Forbidden' })
+              }
+            }
             const rawMessages = (body.messages as Array<any>) ?? []
             let model = (body.model as string) || DEFAULT_MODEL
             const customPrompt = (body.systemPrompt as string) || ''
@@ -388,6 +395,16 @@ export function intellivexApiPlugin(): Plugin {
             if (!isSupabaseReady()) {
               return sendJson(res, 201, { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
             }
+
+            const chat_id = body.chat_id as string
+            if (chat_id) {
+              const chatData = await sbFetch('GET', 'chats', `id=eq.${chat_id}&select=user_id`)
+              const chat = Array.isArray(chatData) ? chatData[0] : chatData
+              if (!chat || chat.user_id !== userId) {
+                return sendJson(res, 403, { error: 'Forbidden' })
+              }
+            }
+
             const data = await sbFetch('POST', 'messages', 'select=*', body)
             const msg = Array.isArray(data) ? data[0] : data
             return sendJson(res, 201, msg ?? { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
@@ -400,6 +417,14 @@ export function intellivexApiPlugin(): Plugin {
 
             if (!prompt?.trim() || !chatId) {
               return sendJson(res, 400, { error: 'Missing prompt or chatId' })
+            }
+
+            if (isSupabaseReady() && chatId) {
+              const chatData = await sbFetch('GET', 'chats', `id=eq.${chatId}&select=user_id`)
+              const chat = Array.isArray(chatData) ? chatData[0] : chatData
+              if (!chat || chat.user_id !== userId) {
+                return sendJson(res, 403, { error: 'Forbidden' })
+              }
             }
 
             // ── Validate HF API key ─────────────────────────────────────────
