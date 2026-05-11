@@ -434,13 +434,16 @@ function Reactions({ reaction, onReact }: {
 }
 
 // ── Message Row ───────────────────────────────────────────────────────────────
+// Performance Optimization: MessageRow uses React.memo to prevent O(N) re-renders
+// during token-by-token streaming. It's critical that all function props (like onReact, onBranchChat)
+// have stable references. Avoid passing inline arrow functions here from the parent.
 const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateImage, isLast, streaming, onReact, onBranchChat }: {
   msg: UIMessage;
   onRegenerate?: () => void;
   onRegenerateImage?: (prompt: string, style?: string, id?: string) => void;
   isLast?: boolean;
   streaming?: boolean;
-  onReact: (r: "up" | "down" | null) => void;
+  onReact: (id: string, r: "up" | "down" | null) => void;
   onBranchChat?: (id: string, text: string) => void;
 }) {
   const isUser = msg.role === "user";
@@ -617,7 +620,7 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
                   </button>
                 )}
                 {!isUser && !isImage && (
-                  <Reactions reaction={msg.reaction} onReact={onReact} />
+                  <Reactions reaction={msg.reaction} onReact={(r) => onReact(msg.id, r)} />
                 )}
               </div>
               <span className="msg-timestamp">
@@ -1396,7 +1399,7 @@ export default function App() {
                             streaming={streaming}
                             onRegenerate={i === messages.length - 1 ? handleRegen : undefined}
                             onRegenerateImage={handleRegenImage}
-                            onReact={(r) => reactToMessage(msg.id, r)}
+                            onReact={reactToMessage}
                             onBranchChat={branchChat}
                           />
                         ))}
