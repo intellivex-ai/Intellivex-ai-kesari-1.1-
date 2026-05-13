@@ -1,3 +1,6 @@
 ## 2025-01-20 - Memoizing MessageRow
 **Learning:** Found that `MessageRow` in `src/App.tsx` was not memoized, causing unnecessary re-renders of the entire message list whenever the chat state (like typing indicator, new stream chunks) updated. This is a common performance bottleneck in React chat applications.
 **Action:** Applied `React.memo` (imported as `memo` from `react`) to `MessageRow` to prevent re-rendering of all historical messages when only the latest message or input state changes.
+## 2026-05-13 - Optimizing IndexedDB Connection and Operations
+**Learning:** Found that `openDB()` in `src/lib/memory.ts` was repeatedly reopening the IndexedDB connection for every read/write operation, creating a massive performance penalty. Additionally, `addMemory()` was performing heavy CPU-bound tokenization synchronously in a loop, causing UI jank, and was using sequential `await` for persisting and deleting chunks instead of concurrent operations.
+**Action:** Cached the `dbPromise` in `openDB()`, added an event loop yield (`await new Promise(r => setTimeout(r, 0))`) in the chunking loop, and refactored `addMemory()` to use `Promise.all()` for concurrent `putChunk` and `deleteChunk` operations.
