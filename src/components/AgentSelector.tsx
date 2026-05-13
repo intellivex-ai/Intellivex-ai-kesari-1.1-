@@ -136,7 +136,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
             {/* Header */}
             <div className="agent-market-header">
               <span className="agent-market-title">Agent Marketplace</span>
-              <button className="agent-market-close" onClick={() => setOpen(false)} title="Close">
+              <button className="agent-market-close" onClick={() => setOpen(false)} title="Close" aria-label="Close">
                 <X size={14} />
               </button>
             </div>
