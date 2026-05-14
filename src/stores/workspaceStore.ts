@@ -82,7 +82,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           console.log = (...args) => { logs.push({ type: 'log', text: args.join(' ') }); origLog(...args); };
           console.error = (...args) => { logs.push({ type: 'error', text: args.join(' ') }); origErr(...args); };
           try {
-            ${code}
+            // Securely evaluate code to prevent XSS via </script> breakout in srcdoc
+            eval(${JSON.stringify(code).replace(/</g, '\\u003c')})
             window.parent.postMessage({ type: 'done', logs }, '*');
           } catch(e) {
             window.parent.postMessage({ type: 'error', error: e.message, logs }, '*');
