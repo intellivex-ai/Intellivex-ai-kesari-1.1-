@@ -1,0 +1,3 @@
+## 2025-05-14 - Relying solely on title for icon buttons is an anti-pattern
+**Learning:** In this project, relying solely on the `title` attribute for icon-only buttons (like `.img-action-btn`, `.msg-action-icon`, `.sidebar-action-btn`) is an accessibility anti-pattern. While `title` provides a visual tooltip on hover, it does not reliably announce the button's purpose to screen readers.
+**Action:** Always include an explicit `aria-label` attribute alongside the `title` attribute for all icon-only interactive elements to ensure both visual and assistive technology users can understand their function.
