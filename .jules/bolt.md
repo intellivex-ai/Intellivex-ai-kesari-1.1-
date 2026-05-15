@@ -1,3 +1,6 @@
 ## 2025-01-20 - Memoizing MessageRow
 **Learning:** Found that `MessageRow` in `src/App.tsx` was not memoized, causing unnecessary re-renders of the entire message list whenever the chat state (like typing indicator, new stream chunks) updated. This is a common performance bottleneck in React chat applications.
 **Action:** Applied `React.memo` (imported as `memo` from `react`) to `MessageRow` to prevent re-rendering of all historical messages when only the latest message or input state changes.
+## 2025-01-20 - Memoizing Markdown Sub-components
+**Learning:** In React chat applications featuring streaming markdown processing, sub-components like `TextBlock`, `ThoughtBlock`, `ToolBlock`, `MarkdownBody`, and `CodeBlock` can become O(N^2) bottlenecks if left un-memoized during token-by-token updates, as every update to the current active streamed message's text triggers re-rendering of all prior parsed blocks within that same message. The `MarkdownTable` component specifically required a custom comparison function because its `lines` array prop is recreated on each render.
+**Action:** Applied `React.memo` to markdown parser blocks (`TextBlock`, `ThoughtBlock`, `ToolBlock`, `MarkdownBody`, `CodeBlock`, and `MarkdownTable` with custom equality function) to significantly reduce repetitive tree processing when updating active messages.
