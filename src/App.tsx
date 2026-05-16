@@ -64,7 +64,7 @@ function renderInline(text: string): React.ReactNode {
 }
 
 // ── Markdown table ────────────────────────────────────────────────────────────
-function MarkdownTable({ lines }: { lines: string[] }) {
+const MarkdownTable = memo(function MarkdownTable({ lines }: { lines: string[] }) {
   const rows = lines.map(l => l.replace(/^\||\|$/g, "").split("|").map(c => c.trim()));
   const header = rows[0];
   // row[1] is the separator — skip it
@@ -83,10 +83,13 @@ function MarkdownTable({ lines }: { lines: string[] }) {
       </table>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  return prevProps.lines.length === nextProps.lines.length &&
+         prevProps.lines.every((line, i) => line === nextProps.lines[i]);
+});
 
 // ── Text block (handles headings, lists, tables, paragraphs) ─────────────────
-function TextBlock({ text }: { text: string }) {
+const TextBlock = memo(function TextBlock({ text }: { text: string }) {
   const lines = text.split("\n");
   const out: React.ReactNode[] = [];
   let listItems: React.ReactNode[] = [];
@@ -121,9 +124,9 @@ function TextBlock({ text }: { text: string }) {
   flushList();
   flushTable();
   return <>{out}</>;
-}
+});
 
-function ThoughtBlock({ content }: { content: string }) {
+const ThoughtBlock = memo(function ThoughtBlock({ content }: { content: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`thought-block ${open ? 'open' : ''}`}>
@@ -148,9 +151,9 @@ function ThoughtBlock({ content }: { content: string }) {
       </AnimatePresence>
     </div>
   );
-}
+});
 
-function ToolBlock({ content, name }: { content: string; name?: string }) {
+const ToolBlock = memo(function ToolBlock({ content, name }: { content: string; name?: string }) {
   const [open, setOpen] = useState(false);
   const { runCode } = useWorkspaceStore();
 
@@ -199,9 +202,9 @@ function ToolBlock({ content, name }: { content: string; name?: string }) {
       </AnimatePresence>
     </div>
   );
-}
+});
 
-function MarkdownBody({ content }: { content: string }) {
+const MarkdownBody = memo(function MarkdownBody({ content }: { content: string }) {
   const nodes: React.ReactNode[] = [];
   
   // Extract both thought blocks and tool blocks safely
@@ -246,7 +249,7 @@ function MarkdownBody({ content }: { content: string }) {
   }
 
   return <div className="md-content">{nodes}</div>;
-}
+});
 
 // ── Waveform typing indicator ─────────────────────────────────────────────────
 function TypingIndicator() {
