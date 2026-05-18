@@ -104,7 +104,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
               </button>
             )
           })}
-          <button className="agent-compact-btn agent-more-btn" onClick={() => setOpen(true)}>
+          <button className="agent-compact-btn agent-more-btn" onClick={() => setOpen(true)} aria-label="Open agent marketplace">
             <Search size={13} />
             <span>More…</span>
           </button>
@@ -136,7 +136,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
             {/* Header */}
             <div className="agent-market-header">
               <span className="agent-market-title">Agent Marketplace</span>
-              <button className="agent-market-close" onClick={() => setOpen(false)} title="Close">
+              <button className="agent-market-close" onClick={() => setOpen(false)} title="Close" aria-label="Close marketplace">
                 <X size={14} />
               </button>
             </div>
@@ -152,7 +152,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
                 onChange={e => setSearch(e.target.value)}
               />
               {search && (
-                <button className="agent-search-clear" onClick={() => setSearch('')}>
+                <button className="agent-search-clear" onClick={() => setSearch('')} aria-label="Clear search">
                   <X size={11} />
                 </button>
               )}
