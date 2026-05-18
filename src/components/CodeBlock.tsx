@@ -35,7 +35,7 @@ export function CodeBlock({ lang, code }: { lang: string; code: string }) {
               <Terminal size={11} /> Run
             </button>
           )}
-          <button onClick={copy} className={`code-copy ${copied ? 'copied' : ''}`}>
+          <button onClick={copy} className={`code-copy ${copied ? 'copied' : ''}`} aria-label="Copy code">
             {copied ? <Check size={11} /> : <Copy size={11} />}
             {copied ? 'Copied!' : 'Copy'}
           </button>

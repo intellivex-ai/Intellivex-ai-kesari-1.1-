@@ -185,6 +185,7 @@ function WsTab({ label, icon, active, onClick, id }: {
       className={`ws-tab ${active ? 'ws-tab-active' : ''}`}
       onClick={onClick}
       title={label}
+      aria-label={label}
     >
       {icon}
       <span>{label}</span>
