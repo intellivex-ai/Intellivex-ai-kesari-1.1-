@@ -1,3 +1,6 @@
 ## 2025-01-20 - Memoizing MessageRow
 **Learning:** Found that `MessageRow` in `src/App.tsx` was not memoized, causing unnecessary re-renders of the entire message list whenever the chat state (like typing indicator, new stream chunks) updated. This is a common performance bottleneck in React chat applications.
 **Action:** Applied `React.memo` (imported as `memo` from `react`) to `MessageRow` to prevent re-rendering of all historical messages when only the latest message or input state changes.
+## 2025-01-20 - Zustand Subscriptions Defeating React.memo
+**Learning:** Found that wrapping components in `React.memo` (like `ToolBlock` and `CodeBlock`) is ineffective if they consume a Zustand store by destructuring without a selector (e.g., `const { runCode } = useWorkspaceStore()`). This subscribes the component to the *entire* store state, causing a re-render on any store change, completely bypassing the memoization benefits.
+**Action:** When applying `React.memo` to a component that uses Zustand, always refactor destructuring to use specific state selectors (e.g., `const runCode = useWorkspaceStore(s => s.runCode)`) to ensure the component only re-renders when its specific dependencies change.
