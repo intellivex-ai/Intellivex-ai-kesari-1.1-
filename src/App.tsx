@@ -152,7 +152,7 @@ function ThoughtBlock({ content }: { content: string }) {
 
 function ToolBlock({ content, name }: { content: string; name?: string }) {
   const [open, setOpen] = useState(false);
-  const { runCode } = useWorkspaceStore();
+  const runCode = useWorkspaceStore(s => s.runCode);
 
   let parsedCode = '';
   let canRun = false;
@@ -1213,7 +1213,9 @@ export default function App() {
   const [atBottom, setAtBottom] = useState(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
-  const { open: workspaceOpen, openWorkspace, closeWorkspace } = useWorkspaceStore();
+  const workspaceOpen = useWorkspaceStore(s => s.open);
+  const openWorkspace = useWorkspaceStore(s => s.openWorkspace);
+  const closeWorkspace = useWorkspaceStore(s => s.closeWorkspace);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const { chats, activeId, messages, loading, streaming, msgLoading, imageUsage } = state;
