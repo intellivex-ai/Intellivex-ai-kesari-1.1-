@@ -1,4 +1,4 @@
-import { test, describe } from 'node:test'
+import { test, describe, expect } from 'vitest'
 import assert from 'node:assert'
 import { tokenize, buildTFVector, cosineSimilarity, formatMemoryForPrompt } from './memory'
 
