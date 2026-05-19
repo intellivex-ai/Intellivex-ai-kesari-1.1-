@@ -340,11 +340,11 @@ function ImageMessage({ msg, onRegenerate }: { msg: UIMessage; onRegenerate: () 
         </p>
       )}
       <div className="img-actions">
-        <button className="img-action-btn" onClick={download} disabled={downloading} title="Download image">
+        <button className="img-action-btn" onClick={download} disabled={downloading} title="Download image" aria-label="Download image">
           {downloading ? <Loader2 size={12} className="spin" /> : <Download size={12} />}
           {downloading ? 'Saving…' : 'Download'}
         </button>
-        <button className="img-action-btn" onClick={onRegenerate} title="Generate new variation">
+        <button className="img-action-btn" onClick={onRegenerate} title="Generate new variation" aria-label="Generate new variation">
           <RotateCcw size={12} /> Regenerate
         </button>
       </div>
@@ -597,22 +597,22 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
             <div className="msg-footer">
               <div className="msg-footer-left">
                 {!isImage && (
-                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message">
+                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message" aria-label="Copy message">
                     {copied ? <Check size={14} /> : <Copy size={14} />}
                   </button>
                 )}
                 {!isUser && !isImage && (
-                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"}>
+                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"} aria-label={playingTTS ? "Stop reading" : "Read aloud"}>
                     <Volume2 size={14} className={playingTTS ? "playing" : ""} />
                   </button>
                 )}
                 {!isUser && isLast && !streaming && !isImage && onRegenerate && (
-                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response">
+                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response" aria-label="Regenerate response">
                     <RotateCcw size={14} />
                   </button>
                 )}
                 {isUser && !editing && (
-                  <button onClick={() => { setEditVal(msg.content); setEditing(true); }} className="msg-action-icon" title="Edit message">
+                  <button onClick={() => { setEditVal(msg.content); setEditing(true); }} className="msg-action-icon" title="Edit message" aria-label="Edit message">
                     <Edit3 size={14} />
                   </button>
                 )}
