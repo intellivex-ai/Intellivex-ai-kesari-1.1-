@@ -88,7 +88,9 @@ async function exportAsZip(code: string, lang: string, filename?: string) {
 
 // ── Terminal Output ───────────────────────────────────────────────────────────
 function TerminalOutput() {
-  const { sandboxOutputs, clearOutputs, isRunning } = useWorkspaceStore()
+  const sandboxOutputs = useWorkspaceStore(s => s.sandboxOutputs)
+  const clearOutputs = useWorkspaceStore(s => s.clearOutputs)
+  const isRunning = useWorkspaceStore(s => s.isRunning)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -139,7 +141,9 @@ function TerminalOutput() {
 
 // ── File Explorer ─────────────────────────────────────────────────────────────
 function FileExplorer() {
-  const { files, activeFile, setActiveFile } = useWorkspaceStore()
+  const files = useWorkspaceStore(s => s.files)
+  const activeFile = useWorkspaceStore(s => s.activeFile)
+  const setActiveFile = useWorkspaceStore(s => s.setActiveFile)
 
   // Auto-index files into memory when opened
   useEffect(() => {
@@ -194,11 +198,16 @@ function WsTab({ label, icon, active, onClick, id }: {
 
 // ── Main WorkspacePanel ───────────────────────────────────────────────────────
 export function WorkspacePanel() {
-  const {
-    open, activeTab, setTab, closeWorkspace,
-    previewCode, previewLang, runCode, isRunning,
-    panelWidth, setPanelWidth
-  } = useWorkspaceStore()
+  const open = useWorkspaceStore(s => s.open)
+  const activeTab = useWorkspaceStore(s => s.activeTab)
+  const setTab = useWorkspaceStore(s => s.setTab)
+  const closeWorkspace = useWorkspaceStore(s => s.closeWorkspace)
+  const previewCode = useWorkspaceStore(s => s.previewCode)
+  const previewLang = useWorkspaceStore(s => s.previewLang)
+  const runCode = useWorkspaceStore(s => s.runCode)
+  const isRunning = useWorkspaceStore(s => s.isRunning)
+  const panelWidth = useWorkspaceStore(s => s.panelWidth)
+  const setPanelWidth = useWorkspaceStore(s => s.setPanelWidth)
 
   const [reactLiveMode, setReactLiveMode] = useState(false)
   const isReact = isReactCode(previewLang, previewCode)
