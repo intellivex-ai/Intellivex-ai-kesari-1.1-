@@ -6,7 +6,9 @@ import { useWorkspaceStore } from "../stores/workspaceStore";
 export function CodeBlock({ lang, code }: { lang: string; code: string }) {
   const [copied, setCopied] = useState(false);
   const toast = useToast();
-  const { openWorkspace, runCode } = useWorkspaceStore();
+  // Optimization: use specific selectors to prevent re-renders on arbitrary store changes
+  const openWorkspace = useWorkspaceStore(s => s.openWorkspace);
+  const runCode = useWorkspaceStore(s => s.runCode);
   const isWeb = ["js", "javascript", "ts", "typescript", "html", "css", "jsx", "tsx"].includes(lang.toLowerCase());
   const isRunnable = ["js", "javascript", "ts", "typescript", "html"].includes(lang.toLowerCase());
 
