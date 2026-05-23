@@ -1,4 +1,4 @@
-## 2026-04-15 - [Fix IDOR in api/generate-image.ts]
-**Vulnerability:** Insecure Direct Object Reference (IDOR) where any authenticated user could insert image messages into any other user's chat.
-**Learning:** The application was missing explicit authorization checks (resource ownership verification) on the server side when performing operations via API endpoints that accept identifiers (like `chatId`) from the client.
-**Prevention:** Always verify resource ownership (e.g., query the `chats` table to match the `user_id` with the authenticated `userId`) before allowing modifications or creations on that resource.
+## 2024-05-23 - [Critical] Sandbox Execution XSS Prevention
+**Vulnerability:** The code execution sandbox in `src/stores/workspaceStore.ts` directly interpolated user code into an iframe's `srcdoc` template string. If a user provided code containing closing tags (e.g., `</script>`), it would break out of the intended sandbox structure and potentially execute arbitrary outer HTML context code.
+**Learning:** Raw string interpolation for user-provided code in an HTML context (like `srcdoc`) is inherently vulnerable to breakout attacks, even when using an isolated iframe.
+**Prevention:** Always serialize untrusted code within an HTML context securely. Using `eval(${JSON.stringify(code).replace(/</g, '\\u003c')})` ensures the browser's HTML parser cannot be tricked, while the JS engine correctly executes the payload.

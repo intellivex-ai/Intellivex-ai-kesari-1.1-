@@ -82,7 +82,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           console.log = (...args) => { logs.push({ type: 'log', text: args.join(' ') }); origLog(...args); };
           console.error = (...args) => { logs.push({ type: 'error', text: args.join(' ') }); origErr(...args); };
           try {
-            ${code}
+            eval(${JSON.stringify(code).replace(/</g, '\\u003c')});
             window.parent.postMessage({ type: 'done', logs }, '*');
           } catch(e) {
             window.parent.postMessage({ type: 'error', error: e.message, logs }, '*');
@@ -98,7 +98,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             }
           }
           window.addEventListener('message', handler)
-          sandboxFrame.srcdoc = `<script>${script}<\/script>`
+          sandboxFrame.srcdoc = `<script>${script}</script>`
         })
 
         result.logs.forEach((l) => {
