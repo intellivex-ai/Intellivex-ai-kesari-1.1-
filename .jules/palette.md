@@ -1,0 +1,3 @@
+## 2025-05-18 - Dynamic ARIA Labels on Stateful Icon Buttons
+**Learning:** When adding `aria-label`s to icon-only buttons that have dynamic state (e.g. "Stop reading" vs "Read aloud"), the `aria-label` must dynamically match the `title` attribute to ensure screen reader users receive accurate state context. Static `aria-label`s on these dynamic buttons will mask state changes from screen readers.
+**Action:** When auditing or implementing icon-only buttons with toggling states, explicitly bind the `aria-label` to the same dynamic condition/variable as the `title` attribute.
