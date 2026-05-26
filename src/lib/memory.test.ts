@@ -1,22 +1,21 @@
-import { test, describe } from 'node:test'
-import assert from 'node:assert'
+import { test, describe, expect } from 'vitest'
 import { tokenize, buildTFVector, cosineSimilarity, formatMemoryForPrompt } from './memory'
 
 describe('Memory TF-IDF Helpers', () => {
   describe('tokenize', () => {
     test('should lowercase and split by whitespace', () => {
       const tokens = tokenize('Hello World')
-      assert.deepStrictEqual(tokens, ['hello', 'world'])
+      expect(tokens).toEqual(['hello', 'world'])
     })
 
     test('should remove non-alphanumeric characters', () => {
       const tokens = tokenize('Hello, World!')
-      assert.deepStrictEqual(tokens, ['hello', 'world'])
+      expect(tokens).toEqual(['hello', 'world'])
     })
 
     test('should filter out tokens shorter than 3 characters', () => {
       const tokens = tokenize('a is the to be')
-      assert.deepStrictEqual(tokens, ['the']) // 'the' is 3 chars, others are shorter
+      expect(tokens).toEqual(['the']) // 'the' is 3 chars, others are shorter
     })
   })
 
@@ -24,32 +23,32 @@ describe('Memory TF-IDF Helpers', () => {
     test('should build a term frequency vector', () => {
       const tokens = ['apple', 'banana', 'apple']
       const vector = buildTFVector(tokens)
-      assert.ok(Math.abs(vector['apple'] - 2 / 3) < 1e-9)
-      assert.ok(Math.abs(vector['banana'] - 1 / 3) < 1e-9)
+      expect(Math.abs(vector['apple'] - 2 / 3)).toBeLessThan(1e-9)
+      expect(Math.abs(vector['banana'] - 1 / 3)).toBeLessThan(1e-9)
     })
 
     test('should filter out stopwords', () => {
       const tokens = ['apple', 'the', 'banana', 'and']
       const vector = buildTFVector(tokens)
-      assert.ok(Math.abs(vector['apple'] - 1 / 2) < 1e-9)
-      assert.ok(Math.abs(vector['banana'] - 1 / 2) < 1e-9)
-      assert.strictEqual(vector['the'], undefined)
-      assert.strictEqual(vector['and'], undefined)
+      expect(Math.abs(vector['apple'] - 1 / 2)).toBeLessThan(1e-9)
+      expect(Math.abs(vector['banana'] - 1 / 2)).toBeLessThan(1e-9)
+      expect(vector['the']).toBeUndefined()
+      expect(vector['and']).toBeUndefined()
     })
 
     test('should handle empty tokens', () => {
       const vector = buildTFVector([])
-      assert.deepStrictEqual(vector, {})
+      expect(vector).toEqual({})
     })
 
     test('should handle only stopwords', () => {
       const vector = buildTFVector(['the', 'and', 'for'])
-      assert.deepStrictEqual(vector, {})
+      expect(vector).toEqual({})
     })
 
     test('should handle single token', () => {
       const vector = buildTFVector(['apple'])
-      assert.strictEqual(vector['apple'], 1)
+      expect(vector['apple']).toBe(1)
     })
   })
 
@@ -57,14 +56,14 @@ describe('Memory TF-IDF Helpers', () => {
     test('should calculate similarity between identical vectors', () => {
       const vec = { apple: 1, banana: 0.5 }
       const similarity = cosineSimilarity(vec, vec)
-      assert.ok(Math.abs(similarity - 1) < 1e-9)
+      expect(Math.abs(similarity - 1)).toBeLessThan(1e-9)
     })
 
     test('should calculate similarity between different vectors', () => {
       const vecA = { apple: 1, banana: 0 }
       const vecB = { apple: 0, banana: 1 }
       const similarity = cosineSimilarity(vecA, vecB)
-      assert.strictEqual(similarity, 0)
+      expect(similarity).toBe(0)
     })
 
     test('should calculate similarity between partially overlapping vectors', () => {
@@ -75,12 +74,12 @@ describe('Memory TF-IDF Helpers', () => {
       // normA: sqrt(1^2 + 1^2) = sqrt(2)
       // normB: sqrt(1^2 + 1^2) = sqrt(2)
       // similarity: 1 / (sqrt(2) * sqrt(2)) = 1 / 2 = 0.5
-      assert.ok(Math.abs(similarity - 0.5) < 1e-9)
+      expect(Math.abs(similarity - 0.5)).toBeLessThan(1e-9)
     })
 
     test('should handle empty vectors', () => {
       const similarity = cosineSimilarity({}, {})
-      assert.strictEqual(similarity, 0)
+      expect(similarity).toBe(0)
     })
   })
 
@@ -89,15 +88,15 @@ describe('Memory TF-IDF Helpers', () => {
       const text = 'Apple banana apple'
       const tokens = tokenize(text)
       const vector = buildTFVector(tokens)
-      assert.ok(Math.abs(vector['apple'] - 2 / 3) < 1e-9)
-      assert.ok(Math.abs(vector['banana'] - 1 / 3) < 1e-9)
+      expect(Math.abs(vector['apple'] - 2 / 3)).toBeLessThan(1e-9)
+      expect(Math.abs(vector['banana'] - 1 / 3)).toBeLessThan(1e-9)
     })
   })
 
   describe('formatMemoryForPrompt', () => {
     test('should return empty string for empty chunks', () => {
       const result = formatMemoryForPrompt([]);
-      assert.strictEqual(result, '');
+      expect(result).toBe('');
     });
 
     test('should format chunks without labels', () => {
@@ -107,7 +106,7 @@ describe('Memory TF-IDF Helpers', () => {
       ];
       const expected = '[INTERNAL_MEMORY — relevant context from previous sessions]:\n[1] First memory\n---\n[2] Second memory';
       const result = formatMemoryForPrompt(chunks);
-      assert.strictEqual(result, expected);
+      expect(result).toBe(expected);
     });
 
     test('should format chunks with labels', () => {
@@ -116,7 +115,7 @@ describe('Memory TF-IDF Helpers', () => {
       ];
       const expected = '[INTERNAL_MEMORY — relevant context from previous sessions]:\n[1] (app.ts) Code memory';
       const result = formatMemoryForPrompt(chunks);
-      assert.strictEqual(result, expected);
+      expect(result).toBe(expected);
     });
 
     test('should format mixed chunks', () => {
@@ -126,7 +125,7 @@ describe('Memory TF-IDF Helpers', () => {
       ];
       const expected = '[INTERNAL_MEMORY — relevant context from previous sessions]:\n[1] General memory\n---\n[2] (utils.ts) Code memory';
       const result = formatMemoryForPrompt(chunks);
-      assert.strictEqual(result, expected);
+      expect(result).toBe(expected);
     });
   });
 })
