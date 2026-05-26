@@ -139,6 +139,13 @@ async function sbFetch(method: string, table: string, qs = '', body?: unknown) {
   } catch (e) { console.warn('[supabase] fetch error:', e); return null }
 }
 
+async function verifyChatOwnership(chatId: string, userId: string): Promise<boolean> {
+  if (!isSupabaseReady()) return true // Bypass if no DB configured
+  const data = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(chatId)}&select=user_id`)
+  const chat = Array.isArray(data) ? data[0] : data
+  return !!chat && chat.user_id === userId
+}
+
 // ── Hugging Face model cascade ─────────────────────────────────────────────────
 // HF migrated serverless inference to router.huggingface.co in 2025.
 // Old api-inference.huggingface.co returns 410 for ALL models.
@@ -213,6 +220,9 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/chat' && req.method === 'POST') {
             const body = await parseBody(req)
             const chatId = body.chatId as string
+            if (chatId && !(await verifyChatOwnership(chatId, userId))) {
+              return sendJson(res, 403, { error: 'Forbidden' })
+            }
             const rawMessages = (body.messages as Array<any>) ?? []
             let model = (body.model as string) || DEFAULT_MODEL
             const customPrompt = (body.systemPrompt as string) || ''
@@ -329,7 +339,7 @@ export function intellivexApiPlugin(): Plugin {
             // Persist to Supabase (best-effort, no-op if not configured)
             if (isSupabaseReady() && chatId && full) {
               await sbFetch('POST', 'messages', '', { chat_id: chatId, role: 'assistant', content: full })
-              await sbFetch('PATCH', 'chats', `id=eq.${chatId}`, { updated_at: new Date().toISOString() })
+              await sbFetch('PATCH', 'chats', `id=eq.${encodeURIComponent(chatId)}`, { updated_at: new Date().toISOString() })
             }
 
             res.write('data: [DONE]\n\n')
@@ -362,15 +372,15 @@ export function intellivexApiPlugin(): Plugin {
 
           // ══ PATCH /api/chats ════════════════════════════════════════════════
           if (pathname === '/api/chats' && req.method === 'PATCH') {
-            const body = await parseBody(req)
-            await sbFetch('PATCH', 'chats', `id=eq.${body.id}&user_id=eq.${encodeURIComponent(userId)}`, { title: body.title, updated_at: new Date().toISOString() })
+            const body = await parseBody(req) as any
+            await sbFetch('PATCH', 'chats', `id=eq.${encodeURIComponent(body.id)}&user_id=eq.${encodeURIComponent(userId)}`, { title: body.title, updated_at: new Date().toISOString() })
             return sendJson(res, 200, { ok: true })
           }
 
           // ══ DELETE /api/chats ═══════════════════════════════════════════════
           if (pathname === '/api/chats' && req.method === 'DELETE') {
             const id = query.id as string
-            if (id) await sbFetch('DELETE', 'chats', `id=eq.${id}&user_id=eq.${encodeURIComponent(userId)}`)
+            if (id) await sbFetch('DELETE', 'chats', `id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`)
             return sendJson(res, 200, { ok: true })
           }
 
@@ -378,16 +388,18 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/messages' && req.method === 'GET') {
             const chat_id = query.chat_id as string
             if (!isSupabaseReady() || !chat_id) return sendJson(res, 200, [])
+            if (!(await verifyChatOwnership(chat_id, userId))) return sendJson(res, 403, { error: 'Forbidden' })
             const data = await sbFetch('GET', 'messages', `chat_id=eq.${encodeURIComponent(chat_id)}&order=created_at.asc`)
             return sendJson(res, 200, data ?? [])
           }
 
           // ══ POST /api/messages ══════════════════════════════════════════════
           if (pathname === '/api/messages' && req.method === 'POST') {
-            const body = await parseBody(req)
+            const body = await parseBody(req) as any
             if (!isSupabaseReady()) {
               return sendJson(res, 201, { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
             }
+            if (body.chat_id && !(await verifyChatOwnership(body.chat_id as string, userId))) return sendJson(res, 403, { error: 'Forbidden' })
             const data = await sbFetch('POST', 'messages', 'select=*', body)
             const msg = Array.isArray(data) ? data[0] : data
             return sendJson(res, 201, msg ?? { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
@@ -401,6 +413,7 @@ export function intellivexApiPlugin(): Plugin {
             if (!prompt?.trim() || !chatId) {
               return sendJson(res, 400, { error: 'Missing prompt or chatId' })
             }
+            if (!(await verifyChatOwnership(chatId, userId))) return sendJson(res, 403, { error: 'Forbidden' })
 
             // ── Validate HF API key ─────────────────────────────────────────
             const hfKey = (process.env.HF_API_KEY ?? '').trim()
