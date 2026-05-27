@@ -19,6 +19,7 @@ import { WorkspacePanel } from "./components/WorkspacePanel";
 import { AgentSelector } from "./components/AgentSelector";
 import { VisionHUD, VisionChips } from "./components/VisionHUD";
 import { VoiceOrb } from "./components/VoiceOrb";
+import { useShallow } from 'zustand/react/shallow';
 import { useWorkspaceStore } from "./stores/workspaceStore";
 import { VisionProvider, useVision } from "./context/VisionContext";
 import { VoiceProvider, useVoice } from "./context/VoiceContext";
@@ -152,7 +153,11 @@ function ThoughtBlock({ content }: { content: string }) {
 
 function ToolBlock({ content, name }: { content: string; name?: string }) {
   const [open, setOpen] = useState(false);
-  const { runCode } = useWorkspaceStore();
+  // ⚡ Bolt Performance Optimization:
+  // Using specific selector prevents ToolBlock components from re-rendering
+  // on every workspace store change.
+  // Impact: Improves message streaming performance by isolating React updates.
+  const runCode = useWorkspaceStore(s => s.runCode);
 
   let parsedCode = '';
   let canRun = false;
@@ -1213,7 +1218,15 @@ export default function App() {
   const [atBottom, setAtBottom] = useState(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
-  const { open: workspaceOpen, openWorkspace, closeWorkspace } = useWorkspaceStore();
+  // ⚡ Bolt Performance Optimization:
+  // Destructuring with `useShallow` ensures the heavy App root component
+  // only re-renders when the workspace open state changes, not on every keystroke/terminal output.
+  // Impact: Massive reduction in top-level app re-renders, preventing cascading updates.
+  const { open: workspaceOpen, openWorkspace, closeWorkspace } = useWorkspaceStore(useShallow(s => ({
+    open: s.open,
+    openWorkspace: s.openWorkspace,
+    closeWorkspace: s.closeWorkspace
+  })));
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const { chats, activeId, messages, loading, streaming, msgLoading, imageUsage } = state;
