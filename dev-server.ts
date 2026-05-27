@@ -19,7 +19,8 @@ import { createClient } from '@supabase/supabase-js'
 import { createClerkClient } from '@clerk/backend'
 
 const app = express()
-app.use(cors())
+const ALLOWED_ORIGINS = ['https://intellivexai.com', 'http://localhost:5173', 'http://localhost:3000']
+app.use(cors({ origin: ALLOWED_ORIGINS }))
 app.use(express.json())
 
 // ── Clients ────────────────────────────────────────────────────────────────────
