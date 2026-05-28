@@ -20,6 +20,7 @@ import { AgentSelector } from "./components/AgentSelector";
 import { VisionHUD, VisionChips } from "./components/VisionHUD";
 import { VoiceOrb } from "./components/VoiceOrb";
 import { useWorkspaceStore } from "./stores/workspaceStore";
+import { useShallow } from 'zustand/react/shallow';
 import { VisionProvider, useVision } from "./context/VisionContext";
 import { VoiceProvider, useVoice } from "./context/VoiceContext";
 import { AGENTS } from "./lib/agents";
@@ -152,7 +153,8 @@ function ThoughtBlock({ content }: { content: string }) {
 
 function ToolBlock({ content, name }: { content: string; name?: string }) {
   const [open, setOpen] = useState(false);
-  const { runCode } = useWorkspaceStore();
+  // Optimization: specific selector prevents ToolBlock re-renders when other workspaceStore state changes
+  const runCode = useWorkspaceStore(s => s.runCode);
 
   let parsedCode = '';
   let canRun = false;
@@ -1213,7 +1215,8 @@ export default function App() {
   const [atBottom, setAtBottom] = useState(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
-  const { open: workspaceOpen, openWorkspace, closeWorkspace } = useWorkspaceStore();
+  // Optimization: useShallow prevents App re-renders when other workspaceStore state changes
+  const { open: workspaceOpen, openWorkspace, closeWorkspace } = useWorkspaceStore(useShallow(s => ({ open: s.open, openWorkspace: s.openWorkspace, closeWorkspace: s.closeWorkspace })));
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const { chats, activeId, messages, loading, streaming, msgLoading, imageUsage } = state;
