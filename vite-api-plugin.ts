@@ -125,6 +125,13 @@ function isSupabaseReady() {
   return url.startsWith('https://') && key.length > 20
 }
 
+async function verifyChatOwnership(chatId: string, userId: string): Promise<boolean> {
+  if (!isSupabaseReady() || !chatId || !userId) return false
+  const data = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(chatId)}&select=user_id`)
+  const chat = Array.isArray(data) ? data[0] : data
+  return !!chat && chat.user_id === userId
+}
+
 async function sbFetch(method: string, table: string, qs = '', body?: unknown) {
   if (!isSupabaseReady()) return null
   try {
@@ -213,6 +220,13 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/chat' && req.method === 'POST') {
             const body = await parseBody(req)
             const chatId = body.chatId as string
+
+            if (isSupabaseReady() && chatId) {
+              if (!userId) return sendJson(res, 401, { error: 'Unauthorized' })
+              const owned = await verifyChatOwnership(chatId, userId)
+              if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
+            }
+
             const rawMessages = (body.messages as Array<any>) ?? []
             let model = (body.model as string) || DEFAULT_MODEL
             const customPrompt = (body.systemPrompt as string) || ''
@@ -378,6 +392,11 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/messages' && req.method === 'GET') {
             const chat_id = query.chat_id as string
             if (!isSupabaseReady() || !chat_id) return sendJson(res, 200, [])
+
+            if (!userId) return sendJson(res, 401, { error: 'Unauthorized' })
+            const owned = await verifyChatOwnership(chat_id, userId)
+            if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
+
             const data = await sbFetch('GET', 'messages', `chat_id=eq.${encodeURIComponent(chat_id)}&order=created_at.asc`)
             return sendJson(res, 200, data ?? [])
           }
@@ -385,6 +404,13 @@ export function intellivexApiPlugin(): Plugin {
           // ══ POST /api/messages ══════════════════════════════════════════════
           if (pathname === '/api/messages' && req.method === 'POST') {
             const body = await parseBody(req)
+
+            if (isSupabaseReady() && body.chat_id) {
+              if (!userId) return sendJson(res, 401, { error: 'Unauthorized' })
+              const owned = await verifyChatOwnership(body.chat_id, userId)
+              if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
+            }
+
             if (!isSupabaseReady()) {
               return sendJson(res, 201, { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
             }
@@ -400,6 +426,12 @@ export function intellivexApiPlugin(): Plugin {
 
             if (!prompt?.trim() || !chatId) {
               return sendJson(res, 400, { error: 'Missing prompt or chatId' })
+            }
+
+            if (isSupabaseReady() && chatId) {
+              if (!userId) return sendJson(res, 401, { error: 'Unauthorized' })
+              const owned = await verifyChatOwnership(chatId, userId)
+              if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
             }
 
             // ── Validate HF API key ─────────────────────────────────────────
