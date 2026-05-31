@@ -2,11 +2,15 @@ import { useState } from "react";
 import { Check, Copy, LayoutPanelLeft, Terminal } from "lucide-react";
 import { useToast } from "../context/ToastContext";
 import { useWorkspaceStore } from "../stores/workspaceStore";
+import { useShallow } from 'zustand/react/shallow';
 
 export function CodeBlock({ lang, code }: { lang: string; code: string }) {
   const [copied, setCopied] = useState(false);
   const toast = useToast();
-  const { openWorkspace, runCode } = useWorkspaceStore();
+  const { openWorkspace, runCode } = useWorkspaceStore(useShallow(s => ({
+    openWorkspace: s.openWorkspace,
+    runCode: s.runCode,
+  })));
   const isWeb = ["js", "javascript", "ts", "typescript", "html", "css", "jsx", "tsx"].includes(lang.toLowerCase());
   const isRunnable = ["js", "javascript", "ts", "typescript", "html"].includes(lang.toLowerCase());
 
