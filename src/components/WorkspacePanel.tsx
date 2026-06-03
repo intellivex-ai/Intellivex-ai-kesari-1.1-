@@ -5,6 +5,7 @@ import {
   Loader2, Code2, Download, Zap
 } from 'lucide-react'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useShallow } from 'zustand/react/shallow'
 import { indexWorkspaceFile } from '../lib/memory'
 import { LiveProvider, LivePreview, LiveError } from 'react-live'
 
@@ -88,7 +89,12 @@ async function exportAsZip(code: string, lang: string, filename?: string) {
 
 // ── Terminal Output ───────────────────────────────────────────────────────────
 function TerminalOutput() {
-  const { sandboxOutputs, clearOutputs, isRunning } = useWorkspaceStore()
+  // Optimization: Select specific state with useShallow to prevent re-renders on unrelated workspace updates
+  const { sandboxOutputs, clearOutputs, isRunning } = useWorkspaceStore(useShallow(s => ({
+    sandboxOutputs: s.sandboxOutputs,
+    clearOutputs: s.clearOutputs,
+    isRunning: s.isRunning
+  })))
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -139,7 +145,12 @@ function TerminalOutput() {
 
 // ── File Explorer ─────────────────────────────────────────────────────────────
 function FileExplorer() {
-  const { files, activeFile, setActiveFile } = useWorkspaceStore()
+  // Optimization: Select specific state with useShallow to prevent re-renders on unrelated workspace updates
+  const { files, activeFile, setActiveFile } = useWorkspaceStore(useShallow(s => ({
+    files: s.files,
+    activeFile: s.activeFile,
+    setActiveFile: s.setActiveFile
+  })))
 
   // Auto-index files into memory when opened
   useEffect(() => {
@@ -194,11 +205,23 @@ function WsTab({ label, icon, active, onClick, id }: {
 
 // ── Main WorkspacePanel ───────────────────────────────────────────────────────
 export function WorkspacePanel() {
+  // Optimization: Bundle state subscriptions with useShallow to prevent unnecessary re-renders
   const {
     open, activeTab, setTab, closeWorkspace,
     previewCode, previewLang, runCode, isRunning,
     panelWidth, setPanelWidth
-  } = useWorkspaceStore()
+  } = useWorkspaceStore(useShallow(s => ({
+    open: s.open,
+    activeTab: s.activeTab,
+    setTab: s.setTab,
+    closeWorkspace: s.closeWorkspace,
+    previewCode: s.previewCode,
+    previewLang: s.previewLang,
+    runCode: s.runCode,
+    isRunning: s.isRunning,
+    panelWidth: s.panelWidth,
+    setPanelWidth: s.setPanelWidth
+  })))
 
   const [reactLiveMode, setReactLiveMode] = useState(false)
   const isReact = isReactCode(previewLang, previewCode)
