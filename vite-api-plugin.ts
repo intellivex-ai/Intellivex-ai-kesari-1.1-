@@ -329,7 +329,7 @@ export function intellivexApiPlugin(): Plugin {
             // Persist to Supabase (best-effort, no-op if not configured)
             if (isSupabaseReady() && chatId && full) {
               await sbFetch('POST', 'messages', '', { chat_id: chatId, role: 'assistant', content: full })
-              await sbFetch('PATCH', 'chats', `id=eq.${chatId}`, { updated_at: new Date().toISOString() })
+              await sbFetch('PATCH', 'chats', `id=eq.${encodeURIComponent(chatId)}`, { updated_at: new Date().toISOString() })
             }
 
             res.write('data: [DONE]\n\n')
@@ -363,14 +363,14 @@ export function intellivexApiPlugin(): Plugin {
           // ══ PATCH /api/chats ════════════════════════════════════════════════
           if (pathname === '/api/chats' && req.method === 'PATCH') {
             const body = await parseBody(req)
-            await sbFetch('PATCH', 'chats', `id=eq.${body.id}&user_id=eq.${encodeURIComponent(userId)}`, { title: body.title, updated_at: new Date().toISOString() })
+            await sbFetch('PATCH', 'chats', `id=eq.${encodeURIComponent(String(body.id))}&user_id=eq.${encodeURIComponent(userId)}`, { title: body.title, updated_at: new Date().toISOString() })
             return sendJson(res, 200, { ok: true })
           }
 
           // ══ DELETE /api/chats ═══════════════════════════════════════════════
           if (pathname === '/api/chats' && req.method === 'DELETE') {
             const id = query.id as string
-            if (id) await sbFetch('DELETE', 'chats', `id=eq.${id}&user_id=eq.${encodeURIComponent(userId)}`)
+            if (id) await sbFetch('DELETE', 'chats', `id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`)
             return sendJson(res, 200, { ok: true })
           }
 
