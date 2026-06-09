@@ -64,7 +64,8 @@ function renderInline(text: string): React.ReactNode {
 }
 
 // ── Markdown table ────────────────────────────────────────────────────────────
-function MarkdownTable({ lines }: { lines: string[] }) {
+// ⚡ Bolt: Memoized MarkdownTable with deep comparison for the lines array to prevent O(N) re-renders
+const MarkdownTable = memo(function MarkdownTable({ lines }: { lines: string[] }) {
   const rows = lines.map(l => l.replace(/^\||\|$/g, "").split("|").map(c => c.trim()));
   const header = rows[0];
   // row[1] is the separator — skip it
@@ -83,10 +84,11 @@ function MarkdownTable({ lines }: { lines: string[] }) {
       </table>
     </div>
   );
-}
+}, (prev, next) => prev.lines.length === next.lines.length && prev.lines.every((l, i) => l === next.lines[i]));
 
 // ── Text block (handles headings, lists, tables, paragraphs) ─────────────────
-function TextBlock({ text }: { text: string }) {
+// ⚡ Bolt: Memoized TextBlock to prevent unnecessary re-renders of static text
+const TextBlock = memo(function TextBlock({ text }: { text: string }) {
   const lines = text.split("\n");
   const out: React.ReactNode[] = [];
   let listItems: React.ReactNode[] = [];
@@ -121,9 +123,10 @@ function TextBlock({ text }: { text: string }) {
   flushList();
   flushTable();
   return <>{out}</>;
-}
+});
 
-function ThoughtBlock({ content }: { content: string }) {
+// ⚡ Bolt: Memoized ThoughtBlock to prevent unnecessary re-renders during token streaming
+const ThoughtBlock = memo(function ThoughtBlock({ content }: { content: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`thought-block ${open ? 'open' : ''}`}>
@@ -148,11 +151,12 @@ function ThoughtBlock({ content }: { content: string }) {
       </AnimatePresence>
     </div>
   );
-}
+});
 
-function ToolBlock({ content, name }: { content: string; name?: string }) {
+// ⚡ Bolt: Memoized ToolBlock and optimized Zustand selector to prevent re-renders on workspace state changes
+const ToolBlock = memo(function ToolBlock({ content, name }: { content: string; name?: string }) {
   const [open, setOpen] = useState(false);
-  const { runCode } = useWorkspaceStore();
+  const runCode = useWorkspaceStore(s => s.runCode);
 
   let parsedCode = '';
   let canRun = false;
@@ -199,9 +203,10 @@ function ToolBlock({ content, name }: { content: string; name?: string }) {
       </AnimatePresence>
     </div>
   );
-}
+});
 
-function MarkdownBody({ content }: { content: string }) {
+// ⚡ Bolt: Memoized MarkdownBody to prevent expensive O(N) Markdown parsing when content hasn't changed
+const MarkdownBody = memo(function MarkdownBody({ content }: { content: string }) {
   const nodes: React.ReactNode[] = [];
   
   // Extract both thought blocks and tool blocks safely
@@ -246,7 +251,7 @@ function MarkdownBody({ content }: { content: string }) {
   }
 
   return <div className="md-content">{nodes}</div>;
-}
+});
 
 // ── Waveform typing indicator ─────────────────────────────────────────────────
 function TypingIndicator() {
