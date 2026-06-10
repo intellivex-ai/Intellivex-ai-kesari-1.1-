@@ -418,14 +418,14 @@ function Reactions({ reaction, onReact }: {
       <button
         className={`reaction-btn ${reaction === "up" ? "active-up" : ""}`}
         onClick={() => onReact(reaction === "up" ? null : "up")}
-        title="Good response"
+        title="Good response" aria-label="Good response"
       >
         <ThumbsUp size={12} />
       </button>
       <button
         className={`reaction-btn ${reaction === "down" ? "active-down" : ""}`}
         onClick={() => onReact(reaction === "down" ? null : "down")}
-        title="Bad response"
+        title="Bad response" aria-label="Bad response"
       >
         <ThumbsDown size={12} />
       </button>
@@ -597,17 +597,17 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
             <div className="msg-footer">
               <div className="msg-footer-left">
                 {!isImage && (
-                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message">
+                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message" aria-label="Copy message">
                     {copied ? <Check size={14} /> : <Copy size={14} />}
                   </button>
                 )}
                 {!isUser && !isImage && (
-                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"}>
+                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"} aria-label={playingTTS ? "Stop reading" : "Read aloud"}>
                     <Volume2 size={14} className={playingTTS ? "playing" : ""} />
                   </button>
                 )}
                 {!isUser && isLast && !streaming && !isImage && onRegenerate && (
-                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response">
+                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response" aria-label="Regenerate response">
                     <RotateCcw size={14} />
                   </button>
                 )}
@@ -832,7 +832,7 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
               type="button"
               className={`input-icon-btn plus-btn ${plusMenuOpen ? "active" : ""}`}
               onClick={() => setPlusMenuOpen(!plusMenuOpen)}
-              title="More actions"
+              title="More actions" aria-label="More actions"
             >
               <Plus size={18} style={{ transform: plusMenuOpen ? "rotate(45deg)" : "none", transition: "transform 0.2s" }} />
             </button>
@@ -890,12 +890,12 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
           <div className="input-right-actions">
             {nearLimit && <span className="char-count">{charCount}</span>}
             <button type="button" className={`input-icon-btn ${listening ? "active-mic" : ""}`}
-              title="Voice input" onClick={toggleVoice}>
+              title="Voice input" aria-label="Voice input" onClick={toggleVoice}>
               {listening ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
 
             {disabled ? (
-              <motion.button onClick={onStop} className="send-btn stop-btn" title="Stop"
+              <motion.button onClick={onStop} className="send-btn stop-btn" title="Stop" aria-label="Stop"
                 whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }}>
                 <Square size={13} strokeWidth={3} />
               </motion.button>
@@ -1134,7 +1134,7 @@ function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSetti
             <div className="sidebar-search-action">
               <Search size={15} className="search-icon" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats" />
-              {search && <button className="clear-search" onClick={() => setSearch("")} title="Clear search"><X size={12} /></button>}
+              {search && <button className="clear-search" onClick={() => setSearch("")} title="Clear search" aria-label="Clear search"><X size={12} /></button>}
             </div>
 
             <button className="sidebar-action-btn" onClick={onSettings} title="Settings">
@@ -1350,7 +1350,7 @@ export default function App() {
                 <div className="header-right">
                   {messages.length > 0 && (
                     <div className="export-wrap">
-                      <button className="icon-btn" onClick={() => setExportOpen(!exportOpen)} title="Export alternatives">
+                      <button className="icon-btn" onClick={() => setExportOpen(!exportOpen)} title="Export alternatives" aria-label="Export alternatives">
                         <Download size={16} />
                       </button>
                       <AnimatePresence>
