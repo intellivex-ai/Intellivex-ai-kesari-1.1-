@@ -25,7 +25,7 @@ function AgentCard({ agent, active, onSelect }: {
       whileTap={{ scale: 0.97 }}
       transition={{ duration: 0.15 }}
       style={{ '--agent-color': agent.color } as React.CSSProperties}
-      title={agent.description}
+      title={agent.description} aria-label={agent.description}
     >
       <div className="agent-card-icon">
         <Icon size={18} />
@@ -97,7 +97,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
                 className={`agent-compact-btn ${activeAgentId === id ? 'active' : ''}`}
                 style={{ '--agent-color': a.color } as React.CSSProperties}
                 onClick={() => onSelect(id)}
-                title={a.name}
+                title={a.name} aria-label={a.name}
               >
                 <Ic size={13} />
                 <span>{a.name}</span>
@@ -116,7 +116,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
           style={{ '--agent-color': activeAgent.color } as React.CSSProperties}
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
-          title={`Active agent: ${activeAgent.name}`}
+          title={`Active agent: ${activeAgent.name}`} aria-label={`Active agent: ${activeAgent.name}`}
         >
           <Icon size={14} />
           <span>{activeAgent.name}</span>

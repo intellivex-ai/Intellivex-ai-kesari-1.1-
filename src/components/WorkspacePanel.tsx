@@ -184,7 +184,7 @@ function WsTab({ label, icon, active, onClick, id }: {
       id={`ws-tab-${id}`}
       className={`ws-tab ${active ? 'ws-tab-active' : ''}`}
       onClick={onClick}
-      title={label}
+      title={label} aria-label={label}
     >
       {icon}
       <span>{label}</span>
@@ -284,8 +284,7 @@ export function WorkspacePanel() {
                 <button
                   className={`ws-icon-btn ws-react-toggle ${reactLiveMode ? 'active' : ''}`}
                   onClick={() => setReactLiveMode(!reactLiveMode)}
-                  title={reactLiveMode ? 'Switch to iframe preview' : 'Switch to React Live'}
-                  aria-label={reactLiveMode ? 'Switch to iframe preview' : 'Switch to React Live'}
+                  title={reactLiveMode ? 'Switch to iframe preview' : 'Switch to React Live'} aria-label={reactLiveMode ? 'Switch to iframe preview' : 'Switch to React Live'}
                 >
                   <Zap size={13} />
                 </button>
@@ -295,8 +294,7 @@ export function WorkspacePanel() {
                 <button
                   className="ws-icon-btn ws-export-btn"
                   onClick={() => exportAsZip(previewCode, previewLang)}
-                  title="Export as ZIP"
-                  aria-label="Export as ZIP"
+                  title="Export as ZIP" aria-label="Export as ZIP"
                 >
                   <Download size={14} />
                 </button>
