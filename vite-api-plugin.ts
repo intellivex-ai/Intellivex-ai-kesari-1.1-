@@ -191,6 +191,12 @@ async function callHfModel(
   }
 }
 
+async function verifyChatOwnership(chatId: string, userId: string): Promise<boolean> {
+  const data = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(chatId)}&select=user_id`)
+  const chat = Array.isArray(data) ? data[0] : data
+  return !!chat && chat.user_id === userId
+}
+
 // ── Plugin ─────────────────────────────────────────────────────────────────────
 export function intellivexApiPlugin(): Plugin {
   return {
@@ -213,6 +219,10 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/chat' && req.method === 'POST') {
             const body = await parseBody(req)
             const chatId = body.chatId as string
+            if (isSupabaseReady() && chatId) {
+              const owned = await verifyChatOwnership(chatId, userId)
+              if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
+            }
             const rawMessages = (body.messages as Array<any>) ?? []
             let model = (body.model as string) || DEFAULT_MODEL
             const customPrompt = (body.systemPrompt as string) || ''
@@ -378,6 +388,8 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/messages' && req.method === 'GET') {
             const chat_id = query.chat_id as string
             if (!isSupabaseReady() || !chat_id) return sendJson(res, 200, [])
+            const owned = await verifyChatOwnership(chat_id, userId)
+            if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
             const data = await sbFetch('GET', 'messages', `chat_id=eq.${encodeURIComponent(chat_id)}&order=created_at.asc`)
             return sendJson(res, 200, data ?? [])
           }
@@ -387,6 +399,10 @@ export function intellivexApiPlugin(): Plugin {
             const body = await parseBody(req)
             if (!isSupabaseReady()) {
               return sendJson(res, 201, { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
+            }
+            if (body.chat_id) {
+              const owned = await verifyChatOwnership(body.chat_id as string, userId)
+              if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
             }
             const data = await sbFetch('POST', 'messages', 'select=*', body)
             const msg = Array.isArray(data) ? data[0] : data
@@ -400,6 +416,11 @@ export function intellivexApiPlugin(): Plugin {
 
             if (!prompt?.trim() || !chatId) {
               return sendJson(res, 400, { error: 'Missing prompt or chatId' })
+            }
+
+            if (isSupabaseReady()) {
+              const owned = await verifyChatOwnership(chatId, userId)
+              if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
             }
 
             // ── Validate HF API key ─────────────────────────────────────────
