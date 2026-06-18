@@ -58,7 +58,7 @@ function checkRateLimit(userId: string): { ok: boolean; remaining: number } {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-async function performWebSearch(query: string): Promise<string> {
+async function performWebSearch(query: string): Promise<string | null> {
   try {
     const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
       headers: {
@@ -191,6 +191,22 @@ async function callHfModel(
   }
 }
 
+
+async function checkChatOwner(chatId: string, userId: string): Promise<boolean> {
+  if (!isSupabaseReady()) return true;
+  const data = await sbFetch('GET', 'chats', `id=eq.${chatId}&select=user_id`);
+  const chat = Array.isArray(data) ? data[0] : data;
+  return chat && chat.user_id === userId;
+}
+
+
+async function checkChatOwner(chatId: string, userId: string): Promise<boolean> {
+  if (!isSupabaseReady()) return true;
+  const data = await sbFetch('GET', 'chats', `id=eq.${chatId}&select=user_id`);
+  const chat = Array.isArray(data) ? data[0] : data;
+  return chat && chat.user_id === userId;
+}
+
 // ── Plugin ─────────────────────────────────────────────────────────────────────
 export function intellivexApiPlugin(): Plugin {
   return {
@@ -213,6 +229,16 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/chat' && req.method === 'POST') {
             const body = await parseBody(req)
             const chatId = body.chatId as string
+
+            if (chatId) {
+                const isOwner = await checkChatOwner(chatId, userId);
+                if (!isOwner) return sendJson(res, 403, { error: 'Forbidden' });
+            }
+
+            if (chatId) {
+                const isOwner = await checkChatOwner(chatId, userId);
+                if (!isOwner) return sendJson(res, 403, { error: 'Forbidden' });
+            }
             const rawMessages = (body.messages as Array<any>) ?? []
             let model = (body.model as string) || DEFAULT_MODEL
             const customPrompt = (body.systemPrompt as string) || ''
@@ -378,6 +404,8 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/messages' && req.method === 'GET') {
             const chat_id = query.chat_id as string
             if (!isSupabaseReady() || !chat_id) return sendJson(res, 200, [])
+            const isOwner = await checkChatOwner(chat_id, userId);
+            if (!isOwner) return sendJson(res, 403, { error: 'Forbidden' });
             const data = await sbFetch('GET', 'messages', `chat_id=eq.${encodeURIComponent(chat_id)}&order=created_at.asc`)
             return sendJson(res, 200, data ?? [])
           }
@@ -385,6 +413,11 @@ export function intellivexApiPlugin(): Plugin {
           // ══ POST /api/messages ══════════════════════════════════════════════
           if (pathname === '/api/messages' && req.method === 'POST') {
             const body = await parseBody(req)
+            const chat_id = body.chat_id as string;
+            if (chat_id) {
+               const isOwner = await checkChatOwner(chat_id, userId);
+               if (!isOwner) return sendJson(res, 403, { error: 'Forbidden' });
+            }
             if (!isSupabaseReady()) {
               return sendJson(res, 201, { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
             }
@@ -401,6 +434,12 @@ export function intellivexApiPlugin(): Plugin {
             if (!prompt?.trim() || !chatId) {
               return sendJson(res, 400, { error: 'Missing prompt or chatId' })
             }
+
+            const isOwner = await checkChatOwner(chatId, userId);
+            if (!isOwner) return sendJson(res, 403, { error: 'Forbidden' });
+
+            const isOwner = await checkChatOwner(chatId, userId);
+            if (!isOwner) return sendJson(res, 403, { error: 'Forbidden' });
 
             // ── Validate HF API key ─────────────────────────────────────────
             const hfKey = (process.env.HF_API_KEY ?? '').trim()
