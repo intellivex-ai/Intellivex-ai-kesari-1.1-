@@ -2,3 +2,7 @@
 **Vulnerability:** Insecure Direct Object Reference (IDOR) where any authenticated user could insert image messages into any other user's chat.
 **Learning:** The application was missing explicit authorization checks (resource ownership verification) on the server side when performing operations via API endpoints that accept identifiers (like `chatId`) from the client.
 **Prevention:** Always verify resource ownership (e.g., query the `chats` table to match the `user_id` with the authenticated `userId`) before allowing modifications or creations on that resource.
+## 2025-02-23 - Local Dev Server IDOR via RLS Bypass
+**Vulnerability:** The local development server plugin (`vite-api-plugin.ts`) contained an Insecure Direct Object Reference (IDOR) on the `GET` and `POST /api/messages` endpoints. Any authenticated user could read or write messages to any chat by providing its `chat_id`.
+**Learning:** Because the local dev server uses `SUPABASE_SERVICE_ROLE_KEY` to mimic Supabase operations (since there's no local SDK setup), all requests effectively bypass Row Level Security (RLS). While production Vercel serverless endpoints implement manual ownership verification, the local development counterparts were missing these checks.
+**Prevention:** When using service role keys in any context (including local dev wrappers), explicit manual resource ownership validation MUST be implemented. Always fetch the target resource first and strictly verify `resource.user_id === authenticatedUserId` using type-safe array checks before allowing reads or writes.
