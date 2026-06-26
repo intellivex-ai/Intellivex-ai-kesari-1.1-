@@ -1,0 +1,3 @@
+## 2024-05-18 - Binding dynamic aria-label to title attribute logic
+**Learning:** For icon-only buttons with dynamic toggling states (e.g., 'Stop reading' vs 'Read aloud'), explicitly binding the `aria-label` to the exact same dynamic condition/variable as the `title` attribute ensures screen readers receive accurate state context as it updates. Without this explicit mapping, the aria-label may become stale or misleading.
+**Action:** Always inspect the conditional logic used for tooltips/`title` attributes in toggling buttons and directly copy that logic into the corresponding `aria-label` property to keep them in sync.
