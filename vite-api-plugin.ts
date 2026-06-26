@@ -119,6 +119,14 @@ function sbUrl(table: string, qs = '') {
   return `${base}/rest/v1/${table}${qs ? '?' + qs : ''}`
 }
 
+
+async function verifyChatOwnership(chatId: string, userId: string): Promise<boolean> {
+  if (!isSupabaseReady()) return true; // Fail open in pure local dev
+  const data = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(chatId)}&select=user_id`);
+  if (!Array.isArray(data) || data.length === 0) return false;
+  return data[0].user_id === userId;
+}
+
 function isSupabaseReady() {
   const url = process.env.VITE_SUPABASE_URL ?? ''
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
@@ -213,6 +221,11 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/chat' && req.method === 'POST') {
             const body = await parseBody(req)
             const chatId = body.chatId as string
+            if (chatId) {
+              const owned = await verifyChatOwnership(chatId, userId)
+              if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
+            }
+
             const rawMessages = (body.messages as Array<any>) ?? []
             let model = (body.model as string) || DEFAULT_MODEL
             const customPrompt = (body.systemPrompt as string) || ''
@@ -377,6 +390,11 @@ export function intellivexApiPlugin(): Plugin {
           // ══ GET /api/messages ═══════════════════════════════════════════════
           if (pathname === '/api/messages' && req.method === 'GET') {
             const chat_id = query.chat_id as string
+            if (chat_id) {
+              const owned = await verifyChatOwnership(chat_id, userId)
+              if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
+            }
+
             if (!isSupabaseReady() || !chat_id) return sendJson(res, 200, [])
             const data = await sbFetch('GET', 'messages', `chat_id=eq.${encodeURIComponent(chat_id)}&order=created_at.asc`)
             return sendJson(res, 200, data ?? [])
@@ -385,6 +403,11 @@ export function intellivexApiPlugin(): Plugin {
           // ══ POST /api/messages ══════════════════════════════════════════════
           if (pathname === '/api/messages' && req.method === 'POST') {
             const body = await parseBody(req)
+            if (body.chat_id) {
+              const owned = await verifyChatOwnership(body.chat_id as string, userId)
+              if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
+            }
+
             if (!isSupabaseReady()) {
               return sendJson(res, 201, { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
             }
@@ -397,6 +420,11 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/generate-image' && req.method === 'POST') {
             const body = await parseBody(req)
             const { prompt, style, chatId } = body as { prompt: string; style?: string; chatId: string }
+            if (chatId) {
+              const owned = await verifyChatOwnership(chatId, userId)
+              if (!owned) return sendJson(res, 403, { error: 'Forbidden' })
+            }
+
 
             if (!prompt?.trim() || !chatId) {
               return sendJson(res, 400, { error: 'Missing prompt or chatId' })
