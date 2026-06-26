@@ -597,22 +597,22 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
             <div className="msg-footer">
               <div className="msg-footer-left">
                 {!isImage && (
-                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message">
+                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message" aria-label="Copy message">
                     {copied ? <Check size={14} /> : <Copy size={14} />}
                   </button>
                 )}
                 {!isUser && !isImage && (
-                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"}>
+                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"} aria-label={playingTTS ? "Stop reading" : "Read aloud"}>
                     <Volume2 size={14} className={playingTTS ? "playing" : ""} />
                   </button>
                 )}
                 {!isUser && isLast && !streaming && !isImage && onRegenerate && (
-                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response">
+                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response" aria-label="Regenerate response">
                     <RotateCcw size={14} />
                   </button>
                 )}
                 {isUser && !editing && (
-                  <button onClick={() => { setEditVal(msg.content); setEditing(true); }} className="msg-action-icon" title="Edit message">
+                  <button onClick={() => { setEditVal(msg.content); setEditing(true); }} className="msg-action-icon" title="Edit message" aria-label="Edit message">
                     <Edit3 size={14} />
                   </button>
                 )}
@@ -1134,7 +1134,7 @@ function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onRename, onSetti
             <div className="sidebar-search-action">
               <Search size={15} className="search-icon" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chats" />
-              {search && <button className="clear-search" onClick={() => setSearch("")} title="Clear search"><X size={12} /></button>}
+              {search && <button className="clear-search" onClick={() => setSearch("")} title="Clear search" aria-label="Clear search"><X size={12} /></button>}
             </div>
 
             <button className="sidebar-action-btn" onClick={onSettings} title="Settings">
@@ -1330,10 +1330,10 @@ export default function App() {
               {/* Header */}
               <div className="header">
                 <div className="header-left">
-                  <button className="mobile-menu-btn" onClick={() => setMobileSidebar(true)} title="Open menu"><Menu size={18} /></button>
+                  <button className="mobile-menu-btn" onClick={() => setMobileSidebar(true)} title="Open menu" aria-label="Open menu"><Menu size={18} /></button>
                   {!desktopSidebar && (
                     <div className="tooltip-wrap">
-                      <button className="desktop-menu-btn" onClick={() => setDesktopSidebar(true)} title="Open sidebar"><PanelLeft size={18} /></button>
+                      <button className="desktop-menu-btn" onClick={() => setDesktopSidebar(true)} title="Open sidebar" aria-label="Open sidebar"><PanelLeft size={18} /></button>
                       <div className="tooltip tooltip-right">Open sidebar <span className="kbd"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>S</kbd></span></div>
                     </div>
                   )}
@@ -1350,7 +1350,7 @@ export default function App() {
                 <div className="header-right">
                   {messages.length > 0 && (
                     <div className="export-wrap">
-                      <button className="icon-btn" onClick={() => setExportOpen(!exportOpen)} title="Export alternatives">
+                      <button className="icon-btn" onClick={() => setExportOpen(!exportOpen)} title="Export alternatives" aria-label="Export alternatives">
                         <Download size={16} />
                       </button>
                       <AnimatePresence>
@@ -1369,10 +1369,11 @@ export default function App() {
                     className={`icon-btn ${workspaceOpen ? 'active' : ''}`}
                     onClick={() => workspaceOpen ? closeWorkspace() : openWorkspace()}
                     title="Toggle Workspace"
+                    aria-label="Toggle Workspace"
                   >
                     <LayoutPanelLeft size={15} />
                   </button>
-                  <button className="icon-btn" onClick={() => setSettingsOpen(true)} title="Settings">
+                  <button className="icon-btn" onClick={() => setSettingsOpen(true)} title="Settings" aria-label="Settings">
                     <Settings size={15} />
                   </button>
                 </div>
