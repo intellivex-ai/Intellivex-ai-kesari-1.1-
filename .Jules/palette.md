@@ -1,3 +1,3 @@
-## 2026-04-14 - A11y Attributes for Icon Buttons
-**Learning:** Icon-only buttons without `aria-label`s or `title`s severely impair screen reader and keyboard navigation users as they lack context. Adding these attributes significantly improves UX.
-**Action:** Always ensure any icon-only button contains descriptive `aria-label` and `title` attributes that clarify their functionality.
+## 2024-06-30 - Added ARIA Labels to MessageRow Buttons
+**Learning:** Icon-only buttons with dynamic state (like the TTS 'Read aloud'/'Stop reading' button) require their `aria-label` attributes to explicitly mirror their dynamic `title` state for proper screen reader context, otherwise the toggled state becomes invisible to assistive technologies.
+**Action:** Always ensure `aria-label` bindings are identical to the dynamic conditions driving the `title` or visual icon when implementing icon-only toggle buttons.
