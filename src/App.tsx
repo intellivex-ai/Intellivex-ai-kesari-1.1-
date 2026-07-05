@@ -1330,10 +1330,10 @@ export default function App() {
               {/* Header */}
               <div className="header">
                 <div className="header-left">
-                  <button className="mobile-menu-btn" onClick={() => setMobileSidebar(true)} title="Open menu"><Menu size={18} /></button>
+                  <button className="mobile-menu-btn" onClick={() => setMobileSidebar(true)} title="Open menu" aria-label="Open menu"><Menu size={18} /></button>
                   {!desktopSidebar && (
                     <div className="tooltip-wrap">
-                      <button className="desktop-menu-btn" onClick={() => setDesktopSidebar(true)} title="Open sidebar"><PanelLeft size={18} /></button>
+                      <button className="desktop-menu-btn" onClick={() => setDesktopSidebar(true)} title="Open sidebar" aria-label="Open sidebar"><PanelLeft size={18} /></button>
                       <div className="tooltip tooltip-right">Open sidebar <span className="kbd"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>S</kbd></span></div>
                     </div>
                   )}
@@ -1350,7 +1350,7 @@ export default function App() {
                 <div className="header-right">
                   {messages.length > 0 && (
                     <div className="export-wrap">
-                      <button className="icon-btn" onClick={() => setExportOpen(!exportOpen)} title="Export alternatives">
+                      <button className="icon-btn" onClick={() => setExportOpen(!exportOpen)} title="Export alternatives" aria-label="Export alternatives">
                         <Download size={16} />
                       </button>
                       <AnimatePresence>
@@ -1369,10 +1369,11 @@ export default function App() {
                     className={`icon-btn ${workspaceOpen ? 'active' : ''}`}
                     onClick={() => workspaceOpen ? closeWorkspace() : openWorkspace()}
                     title="Toggle Workspace"
+                    aria-label="Toggle Workspace"
                   >
                     <LayoutPanelLeft size={15} />
                   </button>
-                  <button className="icon-btn" onClick={() => setSettingsOpen(true)} title="Settings">
+                  <button className="icon-btn" onClick={() => setSettingsOpen(true)} title="Settings" aria-label="Settings">
                     <Settings size={15} />
                   </button>
                 </div>
@@ -1459,6 +1460,7 @@ function ImmersiveVoiceBtn() {
       className={`icon-btn voice-immersive-btn ${isActive ? 'active' : ''}`}
       onClick={toggleImmersive}
       title={immersiveMode ? 'Exit voice mode' : 'Immersive voice mode'}
+      aria-label={immersiveMode ? 'Exit voice mode' : 'Immersive voice mode'}
       whileHover={{ scale: 1.08 }}
       whileTap={{ scale: 0.92 }}
     >
