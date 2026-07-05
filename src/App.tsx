@@ -64,7 +64,7 @@ function renderInline(text: string): React.ReactNode {
 }
 
 // ── Markdown table ────────────────────────────────────────────────────────────
-function MarkdownTable({ lines }: { lines: string[] }) {
+const MarkdownTable = memo(function MarkdownTable({ lines }: { lines: string[] }) {
   const rows = lines.map(l => l.replace(/^\||\|$/g, "").split("|").map(c => c.trim()));
   const header = rows[0];
   // row[1] is the separator — skip it
@@ -83,10 +83,10 @@ function MarkdownTable({ lines }: { lines: string[] }) {
       </table>
     </div>
   );
-}
+});
 
 // ── Text block (handles headings, lists, tables, paragraphs) ─────────────────
-function TextBlock({ text }: { text: string }) {
+const TextBlock = memo(function TextBlock({ text }: { text: string }) {
   const lines = text.split("\n");
   const out: React.ReactNode[] = [];
   let listItems: React.ReactNode[] = [];
@@ -121,9 +121,9 @@ function TextBlock({ text }: { text: string }) {
   flushList();
   flushTable();
   return <>{out}</>;
-}
+});
 
-function ThoughtBlock({ content }: { content: string }) {
+const ThoughtBlock = memo(function ThoughtBlock({ content }: { content: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`thought-block ${open ? 'open' : ''}`}>
@@ -148,11 +148,11 @@ function ThoughtBlock({ content }: { content: string }) {
       </AnimatePresence>
     </div>
   );
-}
+});
 
-function ToolBlock({ content, name }: { content: string; name?: string }) {
+const ToolBlock = memo(function ToolBlock({ content, name }: { content: string; name?: string }) {
   const [open, setOpen] = useState(false);
-  const { runCode } = useWorkspaceStore();
+  const runCode = useWorkspaceStore(state => state.runCode);
 
   let parsedCode = '';
   let canRun = false;
@@ -199,9 +199,9 @@ function ToolBlock({ content, name }: { content: string; name?: string }) {
       </AnimatePresence>
     </div>
   );
-}
+});
 
-function MarkdownBody({ content }: { content: string }) {
+const MarkdownBody = memo(function MarkdownBody({ content }: { content: string }) {
   const nodes: React.ReactNode[] = [];
   
   // Extract both thought blocks and tool blocks safely
@@ -1213,7 +1213,9 @@ export default function App() {
   const [atBottom, setAtBottom] = useState(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
-  const { open: workspaceOpen, openWorkspace, closeWorkspace } = useWorkspaceStore();
+  const workspaceOpen = useWorkspaceStore(state => state.open);
+  const openWorkspace = useWorkspaceStore(state => state.openWorkspace);
+  const closeWorkspace = useWorkspaceStore(state => state.closeWorkspace);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const { chats, activeId, messages, loading, streaming, msgLoading, imageUsage } = state;
