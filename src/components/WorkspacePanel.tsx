@@ -185,6 +185,7 @@ function WsTab({ label, icon, active, onClick, id }: {
       className={`ws-tab ${active ? 'ws-tab-active' : ''}`}
       onClick={onClick}
       title={label}
+      aria-label={label}
     >
       {icon}
       <span>{label}</span>
@@ -329,6 +330,7 @@ export function WorkspacePanel() {
                   <iframe
                     key={previewCode}
                     title="Code preview"
+                    aria-label="Code preview"
                     sandbox="allow-scripts allow-forms allow-popups"
                     srcDoc={getSandboxSrc(previewCode, previewLang)}
                     className="ws-iframe"

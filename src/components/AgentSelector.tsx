@@ -26,6 +26,7 @@ function AgentCard({ agent, active, onSelect }: {
       transition={{ duration: 0.15 }}
       style={{ '--agent-color': agent.color } as React.CSSProperties}
       title={agent.description}
+      aria-label={agent.description}
     >
       <div className="agent-card-icon">
         <Icon size={18} />
@@ -98,6 +99,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
                 style={{ '--agent-color': a.color } as React.CSSProperties}
                 onClick={() => onSelect(id)}
                 title={a.name}
+                aria-label={a.name}
               >
                 <Ic size={13} />
                 <span>{a.name}</span>
@@ -117,6 +119,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
           title={`Active agent: ${activeAgent.name}`}
+          aria-label={`Active agent: ${activeAgent.name}`}
         >
           <Icon size={14} />
           <span>{activeAgent.name}</span>
@@ -136,7 +139,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
             {/* Header */}
             <div className="agent-market-header">
               <span className="agent-market-title">Agent Marketplace</span>
-              <button className="agent-market-close" onClick={() => setOpen(false)} title="Close">
+              <button className="agent-market-close" onClick={() => setOpen(false)} title="Close" aria-label="Close">
                 <X size={14} />
               </button>
             </div>
