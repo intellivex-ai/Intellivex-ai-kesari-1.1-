@@ -1,0 +1,3 @@
+## 2024-07-29 - Added ARIA labels to chat message icon-only buttons
+**Learning:** Found multiple icon-only action buttons in `src/App.tsx` (Copy message, Read aloud/Stop reading, Regenerate response, Edit message) that relied solely on `title` attributes for tooltips but lacked `aria-label`s. Because these buttons are dynamically rendered and some toggle states (like Read aloud vs Stop reading), the `aria-label` needs to explicitly mirror the dynamic `title` condition to ensure screen readers receive the same context as visual users.
+**Action:** When implementing icon-only action bars in messaging interfaces, always ensure the `aria-label` explicitly matches the conditional logic of the tooltip (`title`) text to maintain accurate accessibility states.
