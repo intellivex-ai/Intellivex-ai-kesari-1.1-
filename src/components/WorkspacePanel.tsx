@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Terminal, Eye, FolderOpen, Play, Trash2,
@@ -88,7 +89,11 @@ async function exportAsZip(code: string, lang: string, filename?: string) {
 
 // ── Terminal Output ───────────────────────────────────────────────────────────
 function TerminalOutput() {
-  const { sandboxOutputs, clearOutputs, isRunning } = useWorkspaceStore()
+  const { sandboxOutputs, clearOutputs, isRunning } = useWorkspaceStore(useShallow((state) => ({
+    sandboxOutputs: state.sandboxOutputs,
+    clearOutputs: state.clearOutputs,
+    isRunning: state.isRunning
+  })))
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -139,7 +144,11 @@ function TerminalOutput() {
 
 // ── File Explorer ─────────────────────────────────────────────────────────────
 function FileExplorer() {
-  const { files, activeFile, setActiveFile } = useWorkspaceStore()
+  const { files, activeFile, setActiveFile } = useWorkspaceStore(useShallow((state) => ({
+    files: state.files,
+    activeFile: state.activeFile,
+    setActiveFile: state.setActiveFile
+  })))
 
   // Auto-index files into memory when opened
   useEffect(() => {
@@ -194,11 +203,18 @@ function WsTab({ label, icon, active, onClick, id }: {
 
 // ── Main WorkspacePanel ───────────────────────────────────────────────────────
 export function WorkspacePanel() {
-  const {
-    open, activeTab, setTab, closeWorkspace,
-    previewCode, previewLang, runCode, isRunning,
-    panelWidth, setPanelWidth
-  } = useWorkspaceStore()
+  const { open, activeTab, setTab, closeWorkspace, previewCode, previewLang, runCode, isRunning, panelWidth, setPanelWidth } = useWorkspaceStore(useShallow((state) => ({
+    open: state.open,
+    activeTab: state.activeTab,
+    setTab: state.setTab,
+    closeWorkspace: state.closeWorkspace,
+    previewCode: state.previewCode,
+    previewLang: state.previewLang,
+    runCode: state.runCode,
+    isRunning: state.isRunning,
+    panelWidth: state.panelWidth,
+    setPanelWidth: state.setPanelWidth
+  })))
 
   const [reactLiveMode, setReactLiveMode] = useState(false)
   const isReact = isReactCode(previewLang, previewCode)
