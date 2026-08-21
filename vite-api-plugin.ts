@@ -378,6 +378,14 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/messages' && req.method === 'GET') {
             const chat_id = query.chat_id as string
             if (!isSupabaseReady() || !chat_id) return sendJson(res, 200, [])
+
+            // Sentinel: Verify ownership to prevent IDOR
+            if (userId === 'dev-user') return sendJson(res, 401, { error: 'Unauthorized' })
+            const chatCheck = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(chat_id)}&select=user_id`)
+            if (!Array.isArray(chatCheck) || chatCheck.length === 0 || chatCheck[0].user_id !== userId) {
+              return sendJson(res, 403, { error: 'Forbidden' })
+            }
+
             const data = await sbFetch('GET', 'messages', `chat_id=eq.${encodeURIComponent(chat_id)}&order=created_at.asc`)
             return sendJson(res, 200, data ?? [])
           }
@@ -385,9 +393,19 @@ export function intellivexApiPlugin(): Plugin {
           // ══ POST /api/messages ══════════════════════════════════════════════
           if (pathname === '/api/messages' && req.method === 'POST') {
             const body = await parseBody(req)
+            if (!body.chat_id) return sendJson(res, 400, { error: 'Missing chat_id' })
+
             if (!isSupabaseReady()) {
               return sendJson(res, 201, { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
             }
+
+            // Sentinel: Verify ownership to prevent IDOR
+            if (userId === 'dev-user') return sendJson(res, 401, { error: 'Unauthorized' })
+            const chatCheck = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(body.chat_id as string)}&select=user_id`)
+            if (!Array.isArray(chatCheck) || chatCheck.length === 0 || chatCheck[0].user_id !== userId) {
+              return sendJson(res, 403, { error: 'Forbidden' })
+            }
+
             const data = await sbFetch('POST', 'messages', 'select=*', body)
             const msg = Array.isArray(data) ? data[0] : data
             return sendJson(res, 201, msg ?? { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
