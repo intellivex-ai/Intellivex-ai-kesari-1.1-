@@ -1,4 +1,4 @@
-## 2026-04-15 - [Fix IDOR in api/generate-image.ts]
-**Vulnerability:** Insecure Direct Object Reference (IDOR) where any authenticated user could insert image messages into any other user's chat.
-**Learning:** The application was missing explicit authorization checks (resource ownership verification) on the server side when performing operations via API endpoints that accept identifiers (like `chatId`) from the client.
-**Prevention:** Always verify resource ownership (e.g., query the `chats` table to match the `user_id` with the authenticated `userId`) before allowing modifications or creations on that resource.
+## 2023-10-27 - [IDOR in Serverless Vercel endpoints]
+**Vulnerability:** IDOR vulnerability found in `api/memory.ts` where memory embeddings were stored without verifying that the client user actually owns the `chatId` they provided.
+**Learning:** `SUPABASE_SERVICE_ROLE_KEY` is heavily utilized in Vercel API endpoints across the codebase to execute administrative DB calls. Because this key completely bypasses RLS, any endpoint exposing mutations based on client-provided IDs must explicitly implement manual resource ownership validation.
+**Prevention:** Always verify resource ownership (e.g. `user_id === userId`) before performing CRUD operations in any endpoint initialized with a service role key. Ensure failure checks explicitly return 403 Forbidden without leaking data existence.
