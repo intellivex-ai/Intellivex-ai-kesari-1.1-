@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, createContext, memo } from "react";
+import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, motion } from "framer-motion";
 import { useUser, UserButton as ClerkUserButton } from "@clerk/clerk-react";
 import {
@@ -152,7 +153,8 @@ function ThoughtBlock({ content }: { content: string }) {
 
 function ToolBlock({ content, name }: { content: string; name?: string }) {
   const [open, setOpen] = useState(false);
-  const { runCode } = useWorkspaceStore();
+  // Bolt: Selected only runCode to prevent unnecessary re-renders
+  const runCode = useWorkspaceStore(state => state.runCode);
 
   let parsedCode = '';
   let canRun = false;
@@ -1213,7 +1215,8 @@ export default function App() {
   const [atBottom, setAtBottom] = useState(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
-  const { open: workspaceOpen, openWorkspace, closeWorkspace } = useWorkspaceStore();
+  // Bolt: Use useShallow to prevent unnecessary component re-renders
+  const { open: workspaceOpen, openWorkspace, closeWorkspace } = useWorkspaceStore(useShallow(state => ({ open: state.open, openWorkspace: state.openWorkspace, closeWorkspace: state.closeWorkspace })));
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const { chats, activeId, messages, loading, streaming, msgLoading, imageUsage } = state;
