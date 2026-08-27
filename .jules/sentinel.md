@@ -1,4 +1,4 @@
-## 2026-04-15 - [Fix IDOR in api/generate-image.ts]
-**Vulnerability:** Insecure Direct Object Reference (IDOR) where any authenticated user could insert image messages into any other user's chat.
-**Learning:** The application was missing explicit authorization checks (resource ownership verification) on the server side when performing operations via API endpoints that accept identifiers (like `chatId`) from the client.
-**Prevention:** Always verify resource ownership (e.g., query the `chats` table to match the `user_id` with the authenticated `userId`) before allowing modifications or creations on that resource.
+## 2025-02-14 - Fix XSS injection in iframe srcdoc template literal
+**Vulnerability:** A Cross-Site Scripting (XSS) vulnerability existed in `src/stores/workspaceStore.ts` where user-provided code was directly injected into an iframe's `<script>` block via a template literal (`srcdoc = \`<script>${code}</script>\``). This allowed code like `</script><script>alert(1)</script>` to break out of the script tag context and execute arbitrary JS in the iframe, or syntax-break the wrapper block (like `} catch(e) {}`).
+**Learning:** Naively interpolating unsanitized text directly into HTML elements (like `srcdoc`) creates a severe breakout vulnerability.
+**Prevention:** Always serialize untrusted input securely before embedding it into templates. Use `JSON.stringify(code).replace(/</g, '\\u003c')` alongside `eval()` to safely pass stringified JavaScript through an HTML template context without parsing breakouts.
