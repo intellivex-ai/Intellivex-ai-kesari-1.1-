@@ -201,7 +201,7 @@ function ToolBlock({ content, name }: { content: string; name?: string }) {
   );
 }
 
-function MarkdownBody({ content }: { content: string }) {
+const MarkdownBody = memo(function MarkdownBody({ content }: { content: string }) {
   const nodes: React.ReactNode[] = [];
   
   // Extract both thought blocks and tool blocks safely
@@ -246,7 +246,7 @@ function MarkdownBody({ content }: { content: string }) {
   }
 
   return <div className="md-content">{nodes}</div>;
-}
+});
 
 // ── Waveform typing indicator ─────────────────────────────────────────────────
 function TypingIndicator() {
