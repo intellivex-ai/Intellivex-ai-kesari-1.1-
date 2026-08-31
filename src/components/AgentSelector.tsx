@@ -136,7 +136,7 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
             {/* Header */}
             <div className="agent-market-header">
               <span className="agent-market-title">Agent Marketplace</span>
-              <button className="agent-market-close" onClick={() => setOpen(false)} title="Close">
+              <button className="agent-market-close" onClick={() => setOpen(false)} title="Close marketplace" aria-label="Close marketplace">
                 <X size={14} />
               </button>
             </div>
@@ -148,11 +148,12 @@ export function AgentSelector({ activeAgentId, onSelect, compact }: AgentSelecto
                 ref={searchRef}
                 className="agent-search-input"
                 placeholder="Search agents…"
+                aria-label="Search agents"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
               {search && (
-                <button className="agent-search-clear" onClick={() => setSearch('')}>
+                <button className="agent-search-clear" onClick={() => setSearch('')} title="Clear search" aria-label="Clear search">
                   <X size={11} />
                 </button>
               )}
