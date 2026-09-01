@@ -1,3 +1,3 @@
-## 2025-01-20 - Memoizing MessageRow
-**Learning:** Found that `MessageRow` in `src/App.tsx` was not memoized, causing unnecessary re-renders of the entire message list whenever the chat state (like typing indicator, new stream chunks) updated. This is a common performance bottleneck in React chat applications.
-**Action:** Applied `React.memo` (imported as `memo` from `react`) to `MessageRow` to prevent re-rendering of all historical messages when only the latest message or input state changes.
+## 2025-02-18 - Prevent Unnecessary Re-renders from Zustand Store Selectors
+**Learning:** Default destructuring of Zustand store values (e.g., `const { a, b } = useStore()`) triggers a component re-render when *any* property in the entire store changes, even ones that aren't being destructured.
+**Action:** When extracting multiple values, use `useShallow` from `zustand/react/shallow` to bundle state subscriptions. When extracting a single value, use an atomic selector (e.g., `useStore(state => state.value)`) without `useShallow`. This drastically prevents needless re-renders across the app.
