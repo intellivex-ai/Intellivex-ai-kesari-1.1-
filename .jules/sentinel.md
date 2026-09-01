@@ -1,4 +1,8 @@
-## 2026-04-15 - [Fix IDOR in api/generate-image.ts]
-**Vulnerability:** Insecure Direct Object Reference (IDOR) where any authenticated user could insert image messages into any other user's chat.
-**Learning:** The application was missing explicit authorization checks (resource ownership verification) on the server side when performing operations via API endpoints that accept identifiers (like `chatId`) from the client.
-**Prevention:** Always verify resource ownership (e.g., query the `chats` table to match the `user_id` with the authenticated `userId`) before allowing modifications or creations on that resource.
+## 2024-09-01 - Missing Chat Ownership Validation on Messages API
+**Vulnerability:** Insecure Direct Object Reference (IDOR) on `/api/messages` in the local Vite dev server `vite-api-plugin.ts`.
+**Learning:** The `sbFetch` function relies on `SUPABASE_SERVICE_ROLE_KEY` to query Supabase directly, completely bypassing Row Level Security. `GET /api/messages` and `POST /api/messages` endpoints did not verify if the current user actually owned the `chat_id` being requested/written to. (Error payload validation rule: `if (!chat || (Array.isArray(chat) && chat.length === 0))` is critical to ensure fail-open errors do not occur).
+**Prevention:** Always enforce explicit ownership checks before reading or writing subordinate data (e.g., messages under a chat) when using service role keys.
+## 2024-09-01 - Missing Chat Ownership Validation on Messages API
+**Vulnerability:** Insecure Direct Object Reference (IDOR) on `/api/messages` in the local Vite dev server `vite-api-plugin.ts`.
+**Learning:** The `sbFetch` function relies on `SUPABASE_SERVICE_ROLE_KEY` to query Supabase directly, completely bypassing Row Level Security. `GET /api/messages` and `POST /api/messages` endpoints did not verify if the current user actually owned the `chat_id` being requested/written to. Note: Validation using `if (!chat || (Array.isArray(chat) && chat.length === 0))` is slightly flawed because if `chat` is an error object it's technically truthy and not an array, thus failing open. Proper fail-secure logic is `if (!Array.isArray(chat) || chat.length === 0)`.
+**Prevention:** Always enforce explicit ownership checks before reading or writing subordinate data (e.g., messages under a chat) when using service role keys. Validate authorization arrays by strictly failing if not an array.
