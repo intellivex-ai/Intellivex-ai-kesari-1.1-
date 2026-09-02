@@ -116,6 +116,7 @@ export function VoiceOrb() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
             title="Exit immersive mode"
+            aria-label="Exit immersive mode"
           >
             <X size={18} />
           </motion.button>
