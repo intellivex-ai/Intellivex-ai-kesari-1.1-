@@ -26,16 +26,16 @@ export function CodeBlock({ lang, code }: { lang: string; code: string }) {
         </div>
         <div className="code-header-actions">
           {isWeb && (
-            <button onClick={() => openWorkspace(code, lang)} className="code-copy code-preview-btn">
+            <button onClick={() => openWorkspace(code, lang)} className="code-copy code-preview-btn" aria-label="Preview code in workspace">
               <LayoutPanelLeft size={11} /> Preview
             </button>
           )}
           {isRunnable && (
-            <button onClick={() => { openWorkspace(code, lang); runCode(code, lang); }} className="code-copy code-run-btn">
+            <button onClick={() => { openWorkspace(code, lang); runCode(code, lang); }} className="code-copy code-run-btn" aria-label="Run code in workspace">
               <Terminal size={11} /> Run
             </button>
           )}
-          <button onClick={copy} className={`code-copy ${copied ? 'copied' : ''}`}>
+          <button onClick={copy} className={`code-copy ${copied ? 'copied' : ''}`} aria-label={copied ? "Code copied to clipboard" : "Copy code to clipboard"}>
             {copied ? <Check size={11} /> : <Copy size={11} />}
             {copied ? 'Copied!' : 'Copy'}
           </button>
