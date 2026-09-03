@@ -378,6 +378,9 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/messages' && req.method === 'GET') {
             const chat_id = query.chat_id as string
             if (!isSupabaseReady() || !chat_id) return sendJson(res, 200, [])
+            // Sentinel: Verify chat ownership before returning messages
+            const chatCheck = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(chat_id)}&user_id=eq.${encodeURIComponent(userId)}`)
+            if (!Array.isArray(chatCheck) || chatCheck.length === 0) return sendJson(res, 403, { error: 'Forbidden' })
             const data = await sbFetch('GET', 'messages', `chat_id=eq.${encodeURIComponent(chat_id)}&order=created_at.asc`)
             return sendJson(res, 200, data ?? [])
           }
@@ -388,6 +391,11 @@ export function intellivexApiPlugin(): Plugin {
             if (!isSupabaseReady()) {
               return sendJson(res, 201, { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
             }
+            // Sentinel: Verify chat ownership before posting messages
+            const chat_id = body.chat_id as string
+            if (!chat_id) return sendJson(res, 400, { error: 'Missing chat_id' })
+            const chatCheck = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(chat_id)}&user_id=eq.${encodeURIComponent(userId)}`)
+            if (!Array.isArray(chatCheck) || chatCheck.length === 0) return sendJson(res, 403, { error: 'Forbidden' })
             const data = await sbFetch('POST', 'messages', 'select=*', body)
             const msg = Array.isArray(data) ? data[0] : data
             return sendJson(res, 201, msg ?? { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
