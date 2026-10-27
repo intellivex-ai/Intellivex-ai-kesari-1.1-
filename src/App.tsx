@@ -152,7 +152,8 @@ function ThoughtBlock({ content }: { content: string }) {
 
 function ToolBlock({ content, name }: { content: string; name?: string }) {
   const [open, setOpen] = useState(false);
-  const { runCode } = useWorkspaceStore();
+  // Bolt: Selected only runCode to prevent unnecessary re-renders
+  const runCode = useWorkspaceStore(state => state.runCode);
 
   let parsedCode = '';
   let canRun = false;
