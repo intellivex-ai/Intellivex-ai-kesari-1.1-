@@ -602,17 +602,17 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
                   </button>
                 )}
                 {!isUser && !isImage && (
-                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"}>
+                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"} aria-label={playingTTS ? "Stop reading" : "Read aloud"}>
                     <Volume2 size={14} className={playingTTS ? "playing" : ""} />
                   </button>
                 )}
                 {!isUser && isLast && !streaming && !isImage && onRegenerate && (
-                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response">
+                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response" aria-label="Regenerate response">
                     <RotateCcw size={14} />
                   </button>
                 )}
                 {isUser && !editing && (
-                  <button onClick={() => { setEditVal(msg.content); setEditing(true); }} className="msg-action-icon" title="Edit message">
+                  <button onClick={() => { setEditVal(msg.content); setEditing(true); }} className="msg-action-icon" title="Edit message" aria-label="Edit message">
                     <Edit3 size={14} />
                   </button>
                 )}
@@ -833,6 +833,7 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
               className={`input-icon-btn plus-btn ${plusMenuOpen ? "active" : ""}`}
               onClick={() => setPlusMenuOpen(!plusMenuOpen)}
               title="More actions"
+              aria-label="More actions"
             >
               <Plus size={18} style={{ transform: plusMenuOpen ? "rotate(45deg)" : "none", transition: "transform 0.2s" }} />
             </button>
@@ -890,12 +891,12 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
           <div className="input-right-actions">
             {nearLimit && <span className="char-count">{charCount}</span>}
             <button type="button" className={`input-icon-btn ${listening ? "active-mic" : ""}`}
-              title="Voice input" onClick={toggleVoice}>
+              title="Voice input" aria-label={listening ? "Stop voice input" : "Start voice input"} onClick={toggleVoice}>
               {listening ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
 
             {disabled ? (
-              <motion.button onClick={onStop} className="send-btn stop-btn" title="Stop"
+              <motion.button onClick={onStop} className="send-btn stop-btn" title="Stop" aria-label="Stop generation"
                 whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }}>
                 <Square size={13} strokeWidth={3} />
               </motion.button>
@@ -913,7 +914,7 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
                     />
                   </svg>
                 )}
-                <motion.button onClick={send} disabled={!value.trim() && stagedFiles.length === 0} className="send-btn" title="Send message"
+                <motion.button onClick={send} disabled={!value.trim() && stagedFiles.length === 0} className="send-btn" title="Send message" aria-label="Send message"
                   whileHover={value.trim() || stagedFiles.length > 0 ? { scale: 1.08 } : {}} 
                   whileTap={value.trim() || stagedFiles.length > 0 ? { scale: 0.92 } : {}}>
                   {isImageMode ? <Sparkles size={14} /> : <Send size={14} />}
@@ -1350,7 +1351,7 @@ export default function App() {
                 <div className="header-right">
                   {messages.length > 0 && (
                     <div className="export-wrap">
-                      <button className="icon-btn" onClick={() => setExportOpen(!exportOpen)} title="Export alternatives">
+                      <button className="icon-btn" onClick={() => setExportOpen(!exportOpen)} title="Export alternatives" aria-label="Export alternatives">
                         <Download size={16} />
                       </button>
                       <AnimatePresence>
@@ -1369,10 +1370,11 @@ export default function App() {
                     className={`icon-btn ${workspaceOpen ? 'active' : ''}`}
                     onClick={() => workspaceOpen ? closeWorkspace() : openWorkspace()}
                     title="Toggle Workspace"
+                    aria-label={workspaceOpen ? "Close Workspace" : "Open Workspace"}
                   >
                     <LayoutPanelLeft size={15} />
                   </button>
-                  <button className="icon-btn" onClick={() => setSettingsOpen(true)} title="Settings">
+                  <button className="icon-btn" onClick={() => setSettingsOpen(true)} title="Settings" aria-label="Settings">
                     <Settings size={15} />
                   </button>
                 </div>

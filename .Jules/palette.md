@@ -1,3 +1,6 @@
 ## 2026-04-14 - A11y Attributes for Icon Buttons
 **Learning:** Icon-only buttons without `aria-label`s or `title`s severely impair screen reader and keyboard navigation users as they lack context. Adding these attributes significantly improves UX.
 **Action:** Always ensure any icon-only button contains descriptive `aria-label` and `title` attributes that clarify their functionality.
+## 2024-10-29 - Missing ARIA labels on Icon-only buttons
+**Learning:** Found multiple icon-only buttons across `App.tsx`, `AgentSelector.tsx`, and `VisionHUD.tsx` (e.g., Plus menu, Microphone, Settings, Export, Workspace toggle, Remove, Close) that completely lacked `aria-label` attributes, rendering them invisible or un-descriptive to screen readers. For dynamic buttons (like the Microphone or Workspace toggle), the `aria-label` must also be dynamic (e.g. `aria-label={listening ? "Stop voice input" : "Start voice input"}`).
+**Action:** Always verify icon-only interactive elements contain `aria-label`s. Ensure that for elements with toggled states, the `aria-label` dynamically reflects the *next* action or current state context to maintain screen reader accuracy. Also, verify not to accidentally add `aria-label`s to buttons that *do* contain visible dynamic text (like "Copy" / "Copied!"), as this masks the visual state per WCAG 2.5.3.
