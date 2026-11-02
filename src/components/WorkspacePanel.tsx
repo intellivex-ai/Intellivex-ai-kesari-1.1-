@@ -5,6 +5,7 @@ import {
   Loader2, Code2, Download, Zap
 } from 'lucide-react'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useShallow } from 'zustand/react/shallow'
 import { indexWorkspaceFile } from '../lib/memory'
 import { LiveProvider, LivePreview, LiveError } from 'react-live'
 
@@ -88,7 +89,14 @@ async function exportAsZip(code: string, lang: string, filename?: string) {
 
 // ── Terminal Output ───────────────────────────────────────────────────────────
 function TerminalOutput() {
-  const { sandboxOutputs, clearOutputs, isRunning } = useWorkspaceStore()
+  const { sandboxOutputs, clearOutputs, isRunning } = useWorkspaceStore(
+    // Bolt: Selected only necessary state with useShallow to prevent unnecessary re-renders on other state changes
+    useShallow(state => ({
+      sandboxOutputs: state.sandboxOutputs,
+      clearOutputs: state.clearOutputs,
+      isRunning: state.isRunning
+    }))
+  )
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -139,7 +147,14 @@ function TerminalOutput() {
 
 // ── File Explorer ─────────────────────────────────────────────────────────────
 function FileExplorer() {
-  const { files, activeFile, setActiveFile } = useWorkspaceStore()
+  const { files, activeFile, setActiveFile } = useWorkspaceStore(
+    // Bolt: Selected only necessary state with useShallow to prevent unnecessary re-renders
+    useShallow(state => ({
+      files: state.files,
+      activeFile: state.activeFile,
+      setActiveFile: state.setActiveFile
+    }))
+  )
 
   // Auto-index files into memory when opened
   useEffect(() => {
@@ -198,7 +213,21 @@ export function WorkspacePanel() {
     open, activeTab, setTab, closeWorkspace,
     previewCode, previewLang, runCode, isRunning,
     panelWidth, setPanelWidth
-  } = useWorkspaceStore()
+  } = useWorkspaceStore(
+    // Bolt: Selected only necessary state with useShallow to prevent unnecessary re-renders (e.g. when sandboxOutputs changes)
+    useShallow(state => ({
+      open: state.open,
+      activeTab: state.activeTab,
+      setTab: state.setTab,
+      closeWorkspace: state.closeWorkspace,
+      previewCode: state.previewCode,
+      previewLang: state.previewLang,
+      runCode: state.runCode,
+      isRunning: state.isRunning,
+      panelWidth: state.panelWidth,
+      setPanelWidth: state.setPanelWidth
+    }))
+  )
 
   const [reactLiveMode, setReactLiveMode] = useState(false)
   const isReact = isReactCode(previewLang, previewCode)
