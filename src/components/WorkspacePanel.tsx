@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -88,7 +89,7 @@ async function exportAsZip(code: string, lang: string, filename?: string) {
 
 // ── Terminal Output ───────────────────────────────────────────────────────────
 function TerminalOutput() {
-  const { sandboxOutputs, clearOutputs, isRunning } = useWorkspaceStore()
+  const { sandboxOutputs, clearOutputs, isRunning } = useWorkspaceStore(useShallow(s => ({ sandboxOutputs: s.sandboxOutputs, clearOutputs: s.clearOutputs, isRunning: s.isRunning })))
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -139,7 +140,7 @@ function TerminalOutput() {
 
 // ── File Explorer ─────────────────────────────────────────────────────────────
 function FileExplorer() {
-  const { files, activeFile, setActiveFile } = useWorkspaceStore()
+  const { files, activeFile, setActiveFile } = useWorkspaceStore(useShallow(s => ({ files: s.files, activeFile: s.activeFile, setActiveFile: s.setActiveFile })))
 
   // Auto-index files into memory when opened
   useEffect(() => {
@@ -194,11 +195,9 @@ function WsTab({ label, icon, active, onClick, id }: {
 
 // ── Main WorkspacePanel ───────────────────────────────────────────────────────
 export function WorkspacePanel() {
-  const {
-    open, activeTab, setTab, closeWorkspace,
+  const { open, activeTab, setTab, closeWorkspace,
     previewCode, previewLang, runCode, isRunning,
-    panelWidth, setPanelWidth
-  } = useWorkspaceStore()
+    panelWidth, setPanelWidth } = useWorkspaceStore(useShallow(s => ({ open: s.open, activeTab: s.activeTab, setTab: s.setTab, closeWorkspace: s.closeWorkspace, previewCode: s.previewCode, previewLang: s.previewLang, runCode: s.runCode, isRunning: s.isRunning, panelWidth: s.panelWidth, setPanelWidth: s.setPanelWidth })))
 
   const [reactLiveMode, setReactLiveMode] = useState(false)
   const isReact = isReactCode(previewLang, previewCode)
