@@ -597,22 +597,22 @@ const MessageRow = memo(function MessageRow({ msg, onRegenerate, onRegenerateIma
             <div className="msg-footer">
               <div className="msg-footer-left">
                 {!isImage && (
-                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message">
+                  <button onClick={copy} className={`msg-action-icon ${copied ? "active" : ""}`} title="Copy message" aria-label={copied ? "Message copied" : "Copy message"}>
                     {copied ? <Check size={14} /> : <Copy size={14} />}
                   </button>
                 )}
                 {!isUser && !isImage && (
-                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"}>
+                  <button onClick={toggleTTS} className={`msg-action-icon ${playingTTS ? "active" : ""}`} title={playingTTS ? "Stop reading" : "Read aloud"} aria-label={playingTTS ? "Stop reading" : "Read aloud"}>
                     <Volume2 size={14} className={playingTTS ? "playing" : ""} />
                   </button>
                 )}
                 {!isUser && isLast && !streaming && !isImage && onRegenerate && (
-                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response">
+                  <button onClick={onRegenerate} className="msg-action-icon" title="Regenerate response" aria-label="Regenerate response">
                     <RotateCcw size={14} />
                   </button>
                 )}
                 {isUser && !editing && (
-                  <button onClick={() => { setEditVal(msg.content); setEditing(true); }} className="msg-action-icon" title="Edit message">
+                  <button onClick={() => { setEditVal(msg.content); setEditing(true); }} className="msg-action-icon" title="Edit message" aria-label="Edit message">
                     <Edit3 size={14} />
                   </button>
                 )}
@@ -890,12 +890,12 @@ function InputArea({ onSend, disabled, onStop, imageUsage }: {
           <div className="input-right-actions">
             {nearLimit && <span className="char-count">{charCount}</span>}
             <button type="button" className={`input-icon-btn ${listening ? "active-mic" : ""}`}
-              title="Voice input" onClick={toggleVoice}>
+              title="Voice input" aria-label={listening ? "Stop listening" : "Start voice input"} onClick={toggleVoice}>
               {listening ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
 
             {disabled ? (
-              <motion.button onClick={onStop} className="send-btn stop-btn" title="Stop"
+              <motion.button onClick={onStop} className="send-btn stop-btn" title="Stop" aria-label="Stop generation"
                 whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }}>
                 <Square size={13} strokeWidth={3} />
               </motion.button>
