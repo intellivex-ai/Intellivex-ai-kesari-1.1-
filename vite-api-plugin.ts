@@ -214,6 +214,14 @@ export function intellivexApiPlugin(): Plugin {
             const body = await parseBody(req)
             const chatId = body.chatId as string
             const rawMessages = (body.messages as Array<any>) ?? []
+
+            // Sentinel: Verify resource ownership since service_role bypasses RLS
+            if (isSupabaseReady() && chatId) {
+              const chatCheck = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(chatId)}&user_id=eq.${encodeURIComponent(userId)}&select=id`)
+              if (!Array.isArray(chatCheck) || chatCheck.length === 0) {
+                return sendJson(res, 403, { error: 'Forbidden' })
+              }
+            }
             let model = (body.model as string) || DEFAULT_MODEL
             const customPrompt = (body.systemPrompt as string) || ''
             let activePrompt = customPrompt.trim() || SYSTEM_PROMPT
@@ -378,6 +386,12 @@ export function intellivexApiPlugin(): Plugin {
           if (pathname === '/api/messages' && req.method === 'GET') {
             const chat_id = query.chat_id as string
             if (!isSupabaseReady() || !chat_id) return sendJson(res, 200, [])
+
+            // Sentinel: Verify resource ownership since service_role bypasses RLS
+            const chatCheck = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(chat_id)}&user_id=eq.${encodeURIComponent(userId)}&select=id`)
+            if (!Array.isArray(chatCheck) || chatCheck.length === 0) {
+              return sendJson(res, 403, { error: 'Forbidden' })
+            }
             const data = await sbFetch('GET', 'messages', `chat_id=eq.${encodeURIComponent(chat_id)}&order=created_at.asc`)
             return sendJson(res, 200, data ?? [])
           }
@@ -387,6 +401,15 @@ export function intellivexApiPlugin(): Plugin {
             const body = await parseBody(req)
             if (!isSupabaseReady()) {
               return sendJson(res, 201, { id: crypto.randomUUID(), ...body, created_at: new Date().toISOString() })
+            }
+
+            // Sentinel: Verify resource ownership since service_role bypasses RLS
+            const chat_id = body.chat_id as string
+            if (chat_id) {
+              const chatCheck = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(chat_id)}&user_id=eq.${encodeURIComponent(userId)}&select=id`)
+              if (!Array.isArray(chatCheck) || chatCheck.length === 0) {
+                return sendJson(res, 403, { error: 'Forbidden' })
+              }
             }
             const data = await sbFetch('POST', 'messages', 'select=*', body)
             const msg = Array.isArray(data) ? data[0] : data
@@ -400,6 +423,14 @@ export function intellivexApiPlugin(): Plugin {
 
             if (!prompt?.trim() || !chatId) {
               return sendJson(res, 400, { error: 'Missing prompt or chatId' })
+            }
+
+            // Sentinel: Verify resource ownership since service_role bypasses RLS
+            if (isSupabaseReady() && chatId) {
+              const chatCheck = await sbFetch('GET', 'chats', `id=eq.${encodeURIComponent(chatId)}&user_id=eq.${encodeURIComponent(userId)}&select=id`)
+              if (!Array.isArray(chatCheck) || chatCheck.length === 0) {
+                return sendJson(res, 403, { error: 'Forbidden' })
+              }
             }
 
             // ── Validate HF API key ─────────────────────────────────────────
